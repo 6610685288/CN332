@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elderly Care - Community Support</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Font: Saraburi -->
+  <link href="https://fonts.googleapis.com/css2?family=Saraburi:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- SweetAlert2 for nice alerts (No more native alerts) -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    body {
+      font-family: 'Saraburi', sans-serif;
+      background-color: #f0f9ff;
+    }
+
+    .btn-press {
+      transition: transform 0.1s;
+    }
+
+    .btn-press:active {
+      transform: scale(0.95);
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Step Wizard Styles */
+    .step-active {
+      @apply bg-sky-600 text-white border-sky-600;
+    }
+
+    .step-inactive {
+      @apply bg-white text-gray-400 border-gray-300;
+    }
+
+    .option-selected {
+      @apply border-sky-500 bg-sky-50 ring-2 ring-sky-500;
+    }
+  </style>
+</head>
+
+<body class="text-gray-800 h-screen flex flex-col overflow-hidden">
+
+  <!-- 1. Login Screen -->
+  <div id="loginScreen" class="fixed inset-0 z-50 bg-white flex flex-col justify-center items-center p-6">
+    <div class="mb-8 text-center">
+      <i class="fas fa-hands-helping text-6xl text-sky-500 mb-4"></i>
+      <h1 class="text-3xl font-bold text-sky-700">สวัสดีครับ/ค่ะ</h1>
+      <p class="text-xl text-gray-500 mt-2">เข้าสู่ระบบเพื่อใช้งานบริการ</p>
+    </div>
+    <button onclick="handleLogin()"
+      class="w-full max-w-sm bg-white border-2 border-gray-300 p-4 rounded-xl flex items-center justify-center gap-3 shadow-sm hover:bg-gray-50 btn-press">
+      <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-8 h-8" alt="Google">
+      <span class="text-xl font-medium">เข้าสู่ระบบด้วย Google</span>
+    </button>
+  </div>
+
+  <!-- Main Layout -->
+  <div id="app" class="hidden flex h-full">
+
+    <!-- Sidebar -->
+    <nav class="w-64 bg-white shadow-lg flex-col hidden md:flex justify-between">
+      <div>
+        <div class="p-6 bg-sky-600 text-white">
+          <h2 class="text-2xl font-bold">หมู่บ้านแสนสุข</h2>
+          <p id="userNameDisplay" class="text-sky-100 mt-1">ยินดีต้อนรับ</p>
+        </div>
+        <div class="flex flex-col p-4 gap-2">
+          <button onclick="showPage('home')"
+            class="nav-btn p-4 text-left text-lg rounded-lg hover:bg-sky-50 text-sky-700 font-bold bg-sky-50">
+            <i class="fas fa-home w-8"></i> หน้าหลัก
+          </button>
+          <button onclick="showPage('shuttle')"
+            class="nav-btn p-4 text-left text-lg rounded-lg hover:bg-sky-50 text-gray-600">
+            <i class="fas fa-bus w-8"></i> เรียกรถรับ-ส่ง
+          </button>
+          <button onclick="showPage('activity')"
+            class="nav-btn p-4 text-left text-lg rounded-lg hover:bg-sky-50 text-gray-600">
+            <i class="fas fa-users w-8"></i> จองกิจกรรม
+          </button>
+          <button class="nav-btn p-4 text-left text-lg rounded-lg hover:bg-sky-50 text-gray-600">
+            <i class="fas fa-cog w-8"></i> ตั้งค่า
+          </button>
+        </div>
+      </div>
+      <div class="p-4">
+        <button onclick="triggerSOS()"
+          class="w-full bg-red-500 text-white p-6 rounded-xl text-2xl font-bold shadow-lg hover:bg-red-600 animate-pulse">
+          <i class="fas fa-exclamation-circle mr-2"></i> SOS ฉุกเฉิน
+        </button>
+      </div>
+    </nav>
+
+    <!-- Mobile Header -->
+    <div
+      class="md:hidden fixed top-0 w-full bg-sky-600 text-white p-4 z-40 flex justify-between items-center shadow-md">
+      <div class="text-xl font-bold">หมู่บ้านแสนสุข</div>
+      <button onclick="toggleMobileMenu()" class="text-2xl"><i class="fas fa-bars"></i></button>
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-1 bg-sky-50 relative overflow-y-auto pt-16 md:pt-0 no-scrollbar">
+
+      <!-- Page: Dashboard (Home) -->
+      <div id="page-home" class="p-4 md:p-8 max-w-4xl mx-auto space-y-6">
+        <!-- Status Card -->
+        <div id="statusCard" class="bg-white p-6 rounded-2xl shadow-sm border-l-8 border-gray-300">
+          <h3 class="text-xl font-bold text-gray-500">สถานะปัจจุบัน</h3>
+          <p class="text-2xl mt-2 text-gray-400">ยังไม่มีรายการจองขณะนี้</p>
+        </div>
+
+        <!-- Recently Used -->
+        <h3 class="text-xl font-bold text-gray-700 mt-4">ใช้งานล่าสุด</h3>
+        <div class="flex gap-4 overflow-x-auto pb-2">
+          <div
+            class="bg-white p-4 rounded-xl min-w-[150px] shadow-sm flex flex-col items-center gap-2 border border-gray-100">
+            <div class="bg-sky-100 p-3 rounded-full"><i class="fas fa-store text-sky-600 text-xl"></i></div>
+            <span>ไปตลาด</span>
+          </div>
+          <div
+            class="bg-white p-4 rounded-xl min-w-[150px] shadow-sm flex flex-col items-center gap-2 border border-gray-100">
+            <div class="bg-orange-100 p-3 rounded-full"><i class="fas fa-user-md text-orange-600 text-xl"></i></div>
+            <span>ไปคลินิก</span>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="grid grid-cols-2 gap-4 mt-2">
+          <button onclick="showPage('shuttle')"
+            class="bg-sky-600 text-white p-6 rounded-2xl shadow-md btn-press flex flex-col items-center gap-3">
+            <i class="fas fa-bus text-4xl"></i>
+            <span class="text-2xl font-bold">เรียกรถ</span>
+          </button>
+          <button onclick="showPage('activity')"
+            class="bg-emerald-500 text-white p-6 rounded-2xl shadow-md btn-press flex flex-col items-center gap-3">
+            <i class="fas fa-calendar-check text-4xl"></i>
+            <span class="text-2xl font-bold">กิจกรรม</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Page: Shuttle Service -->
+      <div id="page-shuttle" class="hidden p-4 md:p-8 max-w-4xl mx-auto pb-24">
+        <div class="flex items-center gap-4 mb-6">
+          <button onclick="showPage('home')" class="bg-white p-3 rounded-full shadow-sm"><i
+              class="fas fa-arrow-left"></i></button>
+          <h2 class="text-3xl font-bold text-sky-800">เลือกรถรับ-ส่ง</h2>
+        </div>
+        <div id="vehicleList" class="space-y-4">
+          <div class="text-center p-8 text-gray-500">กำลังโหลดข้อมูลรถ...</div>
+        </div>
+      </div>
+
+      <!-- Page: Booking Wizard (FULL VERSION) -->
+      <div id="page-booking" class="hidden p-4 md:p-8 max-w-4xl mx-auto pb-24 h-full flex flex-col">
+        <!-- Header -->
+        <div class="flex items-center gap-4 mb-6 shrink-0">
+          <button onclick="showPage('shuttle')" class="bg-white p-3 rounded-full shadow-sm"><i
+              class="fas fa-arrow-left"></i></button>
+          <h2 class="text-2xl font-bold text-sky-800">จองรถ: <span id="booking-vehicle-name"
+              class="text-sky-600">...</span></h2>
+        </div>
+
+        <!-- Step Indicators -->
+        <div class="flex justify-between items-center mb-8 px-4 shrink-0">
+          <div class="flex flex-col items-center step-indicator" id="step-1-ind">
+            <div class="w-10 h-10 rounded-full border-2 flex items-center justify-center font-bold mb-1 step-active">1
+            </div>
+            <span class="text-sm">ปลายทาง</span>
+          </div>
+          <div class="h-1 flex-1 bg-gray-200 mx-2 relative top-[-10px]"></div>
+          <div class="flex flex-col items-center step-indicator" id="step-2-ind">
+            <div class="w-10 h-10 rounded-full border-2 flex items-center justify-center font-bold mb-1 step-inactive">2
+            </div>
+            <span class="text-sm">รายละเอียด</span>
+          </div>
+          <div class="h-1 flex-1 bg-gray-200 mx-2 relative top-[-10px]"></div>
+          <div class="flex flex-col items-center step-indicator" id="step-3-ind">
+            <div class="w-10 h-10 rounded-full border-2 flex items-center justify-center font-bold mb-1 step-inactive">3
+            </div>
+            <span class="text-sm">ยืนยัน</span>
+          </div>
+        </div>
+
+        <!-- Wizard Content -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm flex-1 overflow-y-auto">
+
+          <!-- STEP 1: Destination -->
+          <div id="step-1" class="wizard-step">
+            <h3 class="text-xl font-bold mb-4">จะไปที่ไหนครับ?</h3>
+
+            <!-- Current Location (Fixed) -->
+            <div class="bg-gray-50 p-4 rounded-xl mb-6 flex items-center gap-3 border border-gray-200">
+              <i class="fas fa-map-marker-alt text-red-500 text-xl"></i>
+              <div>
+                <p class="text-sm text-gray-500">รับจาก</p>
+                <p class="font-bold text-lg">บ้านของคุณ (GPS)</p>
+              </div>
+            </div>
+
+            <!-- Destination Grid -->
+            <div class="grid grid-cols-2 gap-4">
+              <div onclick="selectDestination('clubhouse')"
+                class="dest-card p-4 border-2 rounded-xl text-center cursor-pointer hover:bg-sky-50 transition-all border-gray-200"
+                data-value="clubhouse">
+                <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 text-3xl">
+                  🏊‍♂️</div>
+                <span class="font-bold text-lg">สโมสร</span>
+              </div>
+              <div onclick="selectDestination('market')"
+                class="dest-card p-4 border-2 rounded-xl text-center cursor-pointer hover:bg-sky-50 transition-all border-gray-200"
+                data-value="market">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2 text-3xl">
+                  🥦</div>
+                <span class="font-bold text-lg">ตลาดนัด</span>
+              </div>
+              <div onclick="selectDestination('clinic')"
+                class="dest-card p-4 border-2 rounded-xl text-center cursor-pointer hover:bg-sky-50 transition-all border-gray-200"
+                data-value="clinic">
+                <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-2 text-3xl">
+                  🏥</div>
+                <span class="font-bold text-lg">คลินิก</span>
+              </div>
+              <div onclick="selectDestination('park')"
+                class="dest-card p-4 border-2 rounded-xl text-center cursor-pointer hover:bg-sky-50 transition-all border-gray-200"
+                data-value="park">
+                <div
+                  class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2 text-3xl">🌳
+                </div>
+                <span class="font-bold text-lg">สวนสาธารณะ</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 2: Details -->
+          <div id="step-2" class="wizard-step hidden">
+            <h3 class="text-xl font-bold mb-4">รายละเอียดการเดินทาง</h3>
+
+            <!-- Time -->
+            <div class="mb-6">
+              <label class="block text-gray-600 mb-2 font-bold">เวลาเดินทาง</label>
+              <div class="flex gap-4">
+                <button onclick="selectTimeType('now')" id="btn-time-now"
+                  class="flex-1 p-4 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-700 font-bold">
+                  <i class="fas fa-clock mr-2"></i> ตอนนี้เลย
+                </button>
+                <button onclick="selectTimeType('later')" id="btn-time-later"
+                  class="flex-1 p-4 rounded-xl border-2 border-gray-200 text-gray-500">
+                  <i class="fas fa-calendar-alt mr-2"></i> จองล่วงหน้า
+                </button>
+              </div>
+              <!-- Time Picker (Hidden by default) -->
+              <div id="time-picker-container" class="hidden mt-4 bg-gray-50 p-4 rounded-xl animate-fade-in">
+                <label class="text-sm text-gray-500">เลือกเวลา:</label>
+                <input type="time" id="scheduled-time"
+                  class="w-full mt-1 p-3 text-xl rounded-lg border border-gray-300">
+              </div>
+            </div>
+
+            <!-- Passengers -->
+            <div class="mb-6">
+              <label class="block text-gray-600 mb-2 font-bold">จำนวนผู้โดยสาร</label>
+              <div class="flex items-center gap-4 bg-gray-50 p-2 rounded-xl w-fit">
+                <button onclick="adjustPassenger(-1)"
+                  class="w-12 h-12 bg-white rounded-lg shadow text-xl font-bold hover:bg-gray-100">-</button>
+                <span id="passenger-count" class="text-2xl font-bold w-8 text-center">1</span>
+                <button onclick="adjustPassenger(1)"
+                  class="w-12 h-12 bg-white rounded-lg shadow text-xl font-bold hover:bg-gray-100">+</button>
+              </div>
+            </div>
+
+            <!-- Options -->
+            <div>
+              <label class="block text-gray-600 mb-2 font-bold">ต้องการความช่วยเหลือพิเศษ</label>
+              <label
+                class="flex items-center p-3 rounded-xl border border-gray-200 mb-2 cursor-pointer hover:bg-gray-50">
+                <input type="checkbox" id="opt-wheelchair" class="w-5 h-5 text-sky-600 rounded">
+                <span class="ml-3 text-lg"><i class="fas fa-wheelchair text-sky-500 mr-2"></i> รถเข็น</span>
+              </label>
+              <label class="flex items-center p-3 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50">
+                <input type="checkbox" id="opt-helper" class="w-5 h-5 text-sky-600 rounded">
+                <span class="ml-3 text-lg"><i class="fas fa-user-nurse text-pink-500 mr-2"></i> คนพยุง</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- STEP 3: Summary -->
+          <div id="step-3" class="wizard-step hidden">
+            <div class="text-center mb-6">
+              <h3 class="text-2xl font-bold text-sky-800">ตรวจสอบข้อมูล</h3>
+              <p class="text-gray-500">กรุณาตรวจสอบก่อนยืนยันนะครับ</p>
+            </div>
+
+            <div class="bg-sky-50 p-6 rounded-2xl border border-sky-100 space-y-4">
+              <div class="flex justify-between border-b border-sky-200 pb-2">
+                <span class="text-gray-500">รถที่เรียก</span>
+                <span class="font-bold text-sky-700" id="sum-vehicle">...</span>
+              </div>
+              <div class="flex justify-between border-b border-sky-200 pb-2">
+                <span class="text-gray-500">ปลายทาง</span>
+                <span class="font-bold text-lg" id="sum-dest">...</span>
+              </div>
+              <div class="flex justify-between border-b border-sky-200 pb-2">
+                <span class="text-gray-500">เวลา</span>
+                <span class="font-bold text-lg text-orange-600" id="sum-time">...</span>
+              </div>
+              <div class="flex justify-between border-b border-sky-200 pb-2">
+                <span class="text-gray-500">ผู้โดยสาร</span>
+                <span class="font-bold" id="sum-passengers">1 ท่าน</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-500">เพิ่มเติม</span>
+                <span class="font-bold text-right" id="sum-options">-</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Footer Navigation -->
+        <div class="mt-4 shrink-0 flex gap-4">
+          <button id="btn-back" onclick="prevStep()"
+            class="flex-1 bg-gray-200 text-gray-700 p-4 rounded-xl text-xl font-bold hidden">ย้อนกลับ</button>
+          <button id="btn-next" onclick="nextStep()"
+            class="flex-1 bg-sky-600 text-white p-4 rounded-xl text-xl font-bold shadow-lg">ต่อไป</button>
+          <button id="btn-confirm" onclick="submitBooking()"
+            class="flex-1 bg-green-500 text-white p-4 rounded-xl text-xl font-bold shadow-lg hidden">ยืนยันการจอง</button>
+        </div>
+      </div>
+
+      <!-- Page: Activity (Placeholder) -->
+      <div id="page-activity" class="hidden p-4 md:p-8 max-w-4xl mx-auto">
+        <div class="flex items-center gap-4 mb-6">
+          <button onclick="showPage('home')" class="bg-white p-3 rounded-full shadow-sm"><i
+              class="fas fa-arrow-left"></i></button>
+          <h2 class="text-3xl font-bold text-sky-800">กิจกรรมชมรม</h2>
+        </div>
+        <div class="bg-white p-8 rounded-2xl text-center shadow-sm">
+          <i class="fas fa-tools text-6xl text-gray-300 mb-4"></i>
+          <h3 class="text-2xl text-gray-500">ระบบกำลังพัฒนาครับ</h3>
+          <p class="text-gray-400">เร็วๆ นี้ จะมีกิจกรรมรำไทเก็กและแอโรบิค</p>
+        </div>
+      </div>
+
+      <!-- Mobile SOS -->
+      <div class="md:hidden fixed bottom-6 right-6 left-6 z-50">
+        <button onclick="triggerSOS()"
+          class="w-full bg-red-600 text-white p-4 rounded-full text-xl font-bold shadow-xl border-4 border-white flex items-center justify-center gap-2 animate-bounce">
+          <i class="fas fa-exclamation-circle"></i> แจ้งเหตุฉุกเฉิน
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <!-- Script Section -->
+  <script>
+    // --- Facade API ---
+    class APIFacade {
+      constructor(baseUrl) { this.baseUrl = baseUrl; }
+      async _request(endpoint, method = 'GET', body = null) {
+        const options = { method, headers: { 'Content-Type': 'application/json' } };
+        if (body) options.body = JSON.stringify(body);
+        try {
+          const res = await fetch(`${this.baseUrl}${endpoint}`, options);
+          return res.ok ? await res.json() : { success: false, message: 'Server Error' };
+        } catch (error) {
+          console.error("API Error:", error);
+          return { success: false, message: 'Connection Error' }; // Fallback
+        }
+      }
+      async getVehicles() { return this._request('/vehicles'); }
+      async bookVehicle(data) { return this._request('/book', 'POST', data); }
+    }
+
+    const apiService = new APIFacade('http://localhost:3001/api');
+
+    // --- State ---
+    let currentVehicle = null;
+    let bookingData = {
+      vehicleId: null,
+      vehicleName: '',
+      destination: '',
+      destinationName: '',
+      timeType: 'now', // 'now' or 'later'
+      scheduledTime: '',
+      passengers: 1,
+      options: { wheelchair: false, helper: false }
+    };
+    let currentStep = 1;
+
+    // --- Auth & Nav ---
+    function handleLogin() {
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('userNameDisplay').textContent = "ยินดีต้อนรับ, คุณตา สมชาย";
+      showPage('home');
+    }
+
+    function showPage(pageId) {
+      ['home', 'shuttle', 'booking', 'activity'].forEach(p => document.getElementById(`page-${p}`).classList.add('hidden'));
+      document.getElementById(`page-${pageId}`).classList.remove('hidden');
+      if (pageId === 'shuttle') loadVehicles();
+    }
+
+    function toggleMobileMenu() { Swal.fire('Menu', 'เมนูซ้ายสำหรับมือถือ', 'info'); }
+
+    // --- Vehicle List ---
+    async function loadVehicles() {
+      const list = document.getElementById('vehicleList');
+      list.innerHTML = '<div class="text-center text-xl">กำลังโหลด...</div>';
+
+      // Try fetch, use fallback if server not running
+      let vehicles = [];
+      try {
+        vehicles = await apiService.getVehicles();
+        if (!Array.isArray(vehicles)) throw new Error("No data");
+      } catch (e) {
+        // Fallback Mock Data for Demo purposes if API fails
+        vehicles = [
+          { id: 1, type: 'Golf Cart', name: 'รถกอล์ฟ 01', status: 'available', icon: '🛺' },
+          { id: 2, type: 'Van', name: 'รถตู้ A', status: 'available', icon: '🚐' },
+          { id: 3, type: 'Sidecar', name: 'มอเตอร์ไซค์พ่วง', status: 'out', icon: '🛵' }
+        ];
+      }
+
+      list.innerHTML = '';
+      vehicles.forEach(v => {
+        const isAvail = v.status === 'available';
+        list.innerHTML += `
+                    <div class="${isAvail ? 'bg-white' : 'bg-gray-200 opacity-75'} p-6 rounded-2xl shadow-sm flex items-center justify-between border border-gray-100">
+                        <div class="flex items-center gap-4">
+                            <div class="text-4xl bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center">${v.icon}</div>
+                            <div>
+                                <h3 class="text-2xl font-bold text-gray-800">${v.name}</h3>
+                                <p class="text-lg ${isAvail ? 'text-green-600' : 'text-red-500'}">${isAvail ? 'ว่าง' : 'ไม่ว่าง'}</p>
+                            </div>
+                        </div>
+                        <button ${!isAvail ? 'disabled' : ''} onclick="startBooking('${v.id}', '${v.name}')"
+                            class="${isAvail ? 'bg-sky-600 hover:bg-sky-700 text-white' : 'bg-gray-400 text-white cursor-not-allowed'} px-6 py-3 rounded-xl font-bold text-lg shadow-md">
+                            ${isAvail ? 'จองคันนี้' : 'ไม่ว่าง'}
+                        </button>
+                    </div>
+                `;
+      });
+    }
+
+    // --- Booking Wizard Logic ---
+    function startBooking(id, name) {
+      bookingData = {
+        vehicleId: id, vehicleName: name,
+        destination: '', destinationName: '',
+        timeType: 'now', scheduledTime: '',
+        passengers: 1, options: { wheelchair: false, helper: false }
+      };
+      document.getElementById('booking-vehicle-name').textContent = name;
+
+      // Reset Wizard
+      currentStep = 1;
+      updateWizardUI();
+
+      // Clear selections
+      document.querySelectorAll('.dest-card').forEach(el => el.classList.remove('option-selected'));
+      selectTimeType('now');
+      document.getElementById('opt-wheelchair').checked = false;
+      document.getElementById('opt-helper').checked = false;
+
+      showPage('booking');
+    }
+
+    function updateWizardUI() {
+      // Hide all steps
+      [1, 2, 3].forEach(s => {
+        document.getElementById(`step-${s}`).classList.add('hidden');
+        const ind = document.getElementById(`step-${s}-ind`).querySelector('div');
+        if (s === currentStep) {
+          ind.className = 'w-10 h-10 rounded-full border-2 flex items-center justify-center font-bold mb-1 step-active';
+        } else if (s < currentStep) {
+          ind.className = 'w-10 h-10 rounded-full border-2 flex items-center justify-center font-bold mb-1 bg-sky-200 text-sky-800 border-sky-200';
+          ind.innerHTML = '<i class="fas fa-check"></i>';
+        } else {
+          ind.className = 'w-10 h-10 rounded-full border-2 flex items-center justify-center font-bold mb-1 step-inactive';
+          ind.innerHTML = s;
+        }
+      });
+
+      // Show current
+      document.getElementById(`step-${currentStep}`).classList.remove('hidden');
+
+      // Buttons
+      document.getElementById('btn-back').classList.toggle('hidden', currentStep === 1);
+      document.getElementById('btn-next').classList.toggle('hidden', currentStep === 3);
+      document.getElementById('btn-confirm').classList.toggle('hidden', currentStep !== 3);
+    }
+
+    function nextStep() {
+      if (currentStep === 1 && !bookingData.destination) {
+        Swal.fire('แจ้งเตือน', 'กรุณาเลือกสถานที่ปลายทางก่อนครับ', 'warning');
+        return;
+      }
+      if (currentStep === 2) {
+        // Save Step 2 Data
+        bookingData.options.wheelchair = document.getElementById('opt-wheelchair').checked;
+        bookingData.options.helper = document.getElementById('opt-helper').checked;
+        if (bookingData.timeType === 'later') {
+          const timeVal = document.getElementById('scheduled-time').value;
+          if (!timeVal) {
+            Swal.fire('แจ้งเตือน', 'กรุณาระบุเวลาที่ต้องการจอง', 'warning');
+            return;
+          }
+          bookingData.scheduledTime = timeVal;
+        }
+        updateSummary();
+      }
+      if (currentStep < 3) {
+        currentStep++;
+        updateWizardUI();
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 1) {
+        currentStep--;
+        updateWizardUI();
+      }
+    }
+
+    // --- Step 1 Helpers ---
+    function selectDestination(val) {
+      bookingData.destination = val;
+      // Map value to Thai Name
+      const names = { clubhouse: 'สโมสร', market: 'ตลาดนัด', clinic: 'คลินิก', park: 'สวนสาธารณะ' };
+      bookingData.destinationName = names[val];
+
+      document.querySelectorAll('.dest-card').forEach(el => el.classList.remove('option-selected'));
+      document.querySelector(`.dest-card[data-value="${val}"]`).classList.add('option-selected');
+    }
+
+    // --- Step 2 Helpers ---
+    function selectTimeType(type) {
+      bookingData.timeType = type;
+      const btnNow = document.getElementById('btn-time-now');
+      const btnLater = document.getElementById('btn-time-later');
+      const picker = document.getElementById('time-picker-container');
+
+      if (type === 'now') {
+        btnNow.classList.add('bg-sky-50', 'border-sky-500', 'text-sky-700');
+        btnNow.classList.remove('border-gray-200', 'text-gray-500');
+        btnLater.classList.remove('bg-sky-50', 'border-sky-500', 'text-sky-700');
+        btnLater.classList.add('border-gray-200', 'text-gray-500');
+        picker.classList.add('hidden');
+      } else {
+        btnLater.classList.add('bg-sky-50', 'border-sky-500', 'text-sky-700');
+        btnLater.classList.remove('border-gray-200', 'text-gray-500');
+        btnNow.classList.remove('bg-sky-50', 'border-sky-500', 'text-sky-700');
+        btnNow.classList.add('border-gray-200', 'text-gray-500');
+        picker.classList.remove('hidden');
+      }
+    }
+
+    function adjustPassenger(delta) {
+      let newVal = bookingData.passengers + delta;
+      if (newVal < 1) newVal = 1;
+      if (newVal > 4) newVal = 4;
+      bookingData.passengers = newVal;
+      document.getElementById('passenger-count').textContent = newVal;
+    }
+
+    // --- Step 3 Helpers ---
+    function updateSummary() {
+      document.getElementById('sum-vehicle').textContent = bookingData.vehicleName;
+      document.getElementById('sum-dest').textContent = bookingData.destinationName;
+
+      let timeStr = bookingData.timeType === 'now' ? 'ทันที (ด่วน)' : `จองล่วงหน้า ${bookingData.scheduledTime} น.`;
+      document.getElementById('sum-time').textContent = timeStr;
+      document.getElementById('sum-passengers').textContent = `${bookingData.passengers} ท่าน`;
+
+      let opts = [];
+      if (bookingData.options.wheelchair) opts.push('รถเข็น');
+      if (bookingData.options.helper) opts.push('คนพยุง');
+      document.getElementById('sum-options').textContent = opts.length > 0 ? opts.join(', ') : '-';
+    }
+
+    // --- Final Submit ---
+    async function submitBooking() {
+      // Loading UI
+      Swal.fire({
+        title: 'กำลังเรียกรถ...',
+        text: 'กรุณารอสักครู่',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      const res = await apiService.bookVehicle({
+        vehicleId: bookingData.vehicleId,
+        location: 'บ้านพัก (GPS)',
+        destination: bookingData.destination,
+        time: bookingData.timeType === 'now' ? 'now' : bookingData.scheduledTime,
+        options: bookingData.options
+      });
+
+      if (res.success || res.booking) { // Adapt based on API response structure
+        // Update Home Status
+        const statusCard = document.getElementById('statusCard');
+        statusCard.classList.remove('border-gray-300');
+        statusCard.classList.add('border-sky-500', 'bg-sky-50');
+        statusCard.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="text-xl font-bold text-sky-700">รถกำลังมารับ!</h3>
+                            <p class="text-2xl mt-1 font-bold text-gray-800">${bookingData.vehicleName}</p>
+                            <p class="text-lg text-gray-600">อีก 5 นาทีจะถึงหน้าบ้าน</p>
+                        </div>
+                        <div class="text-4xl text-sky-500"><i class="fas fa-shipping-fast"></i></div>
+                    </div>
+                `;
+
+        Swal.fire({
+          icon: 'success',
+          title: 'เรียกรถสำเร็จ!',
+          text: 'รถกอล์ฟกำลังเดินทางมารับคุณครับ',
+          confirmButtonText: 'ตกลง',
+          confirmButtonColor: '#0ea5e9'
+        }).then(() => {
+          showPage('home');
+        });
+      } else {
+        Swal.fire('เกิดข้อผิดพลาด', res.message || 'ไม่สามารถจองรถได้', 'error');
+      }
+    }
+
+    function triggerSOS() {
+      Swal.fire({
+        title: 'ยืนยันแจ้งเหตุฉุกเฉิน?',
+        text: "เจ้าหน้าที่จะรีบมาที่บ้านของคุณทันที",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'ใช่! แจ้งทันที',
+        cancelButtonText: 'ยกเลิก'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          Swal.fire('แจ้งเหตุแล้ว!', 'เจ้าหน้าที่กำลังเดินทางมา', 'success');
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>
