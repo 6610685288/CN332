@@ -1,0 +1,86 @@
+import React, { useState } from 'react';
+
+const BookingPage = () => {
+    const [currentStep, setCurrentStep] = useState(1);
+    const [bookingData, setBookingData] = useState({
+        vehicleId: null,
+        vehicleName: '',
+        destination: '',
+        scheduledTime: '',
+        passengers: 1,
+        options: { wheelchair: false, helper: false },
+    });
+
+    // Handler functions for step navigation
+    const nextStep = () => {
+        if (currentStep < 3) {
+            setCurrentStep(currentStep + 1);
+        }
+    };
+
+    const prevStep = () => {
+        if (currentStep > 1) {
+            setCurrentStep(currentStep - 1);
+        }
+    };
+
+    return (
+        <div className="container mt-5">
+            <div className="wizard">
+                <div className="wizard-steps">
+                    {/* Step 1 */}
+                    {currentStep === 1 && (
+                        <div id="step-1">
+                            <h3 className="text-center">เลือกสถานที่ปลายทาง</h3>
+                            {/* Destination Selection */}
+                            <div>
+                                <button onClick={() => setBookingData({ ...bookingData, destination: 'clubhouse' })} className="btn btn-outline-primary">
+                                    สโมสร
+                                </button>
+                                {/* More destination buttons */}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 2 */}
+                    {currentStep === 2 && (
+                        <div id="step-2">
+                            <h3 className="text-center">กรุณาระบุเวลาที่ต้องการ</h3>
+                            {/* Time and passenger selection */}
+                            <div>
+                                <button onClick={() => setBookingData({ ...bookingData, scheduledTime: 'now' })} className="btn btn-outline-secondary">
+                                    ตอนนี้
+                                </button>
+                                {/* More time buttons */}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 3: Summary */}
+                    {currentStep === 3 && (
+                        <div id="step-3">
+                            <h3 className="text-center">ตรวจสอบข้อมูล</h3>
+                            <div>
+                                <p>ยานพาหนะ: {bookingData.vehicleName}</p>
+                                <p>ปลายทาง: {bookingData.destination}</p>
+                                <p>เวลาที่จอง: {bookingData.scheduledTime}</p>
+                                <p>ผู้โดยสาร: {bookingData.passengers}</p>
+                            </div>
+                            <button onClick={nextStep} className="btn btn-success">
+                                ยืนยัน
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer Navigation */}
+                <div className="mt-4">
+                    <button onClick={prevStep} className={`btn btn-light ${currentStep === 1 ? 'd-none' : ''}`}>ย้อนกลับ</button>
+                    <button onClick={nextStep} className={`btn btn-primary ${currentStep === 3 ? 'd-none' : ''}`}>ต่อไป</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default BookingPage;
