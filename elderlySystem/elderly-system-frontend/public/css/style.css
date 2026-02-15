@@ -1,0 +1,33 @@
+body { font-family: 'Saraburi', sans-serif; background-color: #f0f9ff; }
+
+/* Animation ปุ่มกด */
+.btn-press { transition: transform 0.1s; }
+.btn-press:active { transform: scale(0.95); }
+
+/* ซ่อน Scrollbar */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Wizard Styling */
+.step-active { 
+    background-color: #0284c7; /* sky-600 */
+    color: white; 
+    border-color: #0284c7; 
+}
+.step-inactive { 
+    background-color: white; 
+    color: #9ca3af; /* gray-400 */
+    border-color: #d1d5db; /* gray-300 */
+}
+.option-selected { 
+    border-color: #0ea5e9; /* sky-500 */
+    background-color: #f0f9ff; /* sky-50 */
+    box-shadow: 0 0 0 2px #0ea5e9; 
+}
+.card-hover { 
+    transition: all 0.3s;
+}
+.card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
