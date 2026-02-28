@@ -27,10 +27,10 @@ const MockGoogleSDK = {
     signIn: () => new Promise(resolve => {
         setTimeout(() => {
             console.log("Calling Mock Google API...");
-            resolve({ 
-                sub: "mock_google_123", 
-                given_name: "สมชาย (Mock)", 
-                picture: "https://via.placeholder.com/150" 
+            resolve({
+                sub: "mock_google_123",
+                given_name: "สมชาย (Mock)",
+                picture: "https://via.placeholder.com/150"
             });
         }, 1000); // รอ 1 วินาที
     })
@@ -40,9 +40,9 @@ const MockLineSDK = {
     login: () => new Promise(resolve => {
         setTimeout(() => {
             console.log("Calling Mock Line API...");
-            resolve({ 
-                userId: "mock_line_456", 
-                displayName: "คุณตาสมชาย รักสุขภาพ", 
+            resolve({
+                userId: "mock_line_456",
+                displayName: "คุณตาสมชาย รักสุขภาพ",
             });
         }, 1000);
     })
@@ -110,7 +110,7 @@ class RealGoogleAuthAdapter {
 class RealFacebookAuthAdapter {
     constructor() {
         // *** ใส่ App ID ของ Facebook ตรงนี้ ***
-        this.appId = '2376106599539939'; 
+        this.appId = '2376106599539939';
         this.scriptUrl = 'https://connect.facebook.net/en_US/sdk.js';
     }
 
@@ -191,19 +191,19 @@ class MockFacebookAuthAdapter {
 // ==========================================
 class AuthFactory {
     static getAdapter(providerName) {
-        switch(providerName) {
+        switch (providerName) {
             case 'google':
                 // *** ถ้าคุณเอา Client ID มาใส่แล้ว ให้เปลี่ยนบรรทัดล่างเป็น: return new RealGoogleAuthAdapter();
-                return new RealGoogleAuthAdapter(); 
-                // return new RealGoogleAuthAdapter(); // <--- เปิดบรรทัดนี้เพื่อใช้ของจริง!
-            
-            case 'line': 
+                return new RealGoogleAuthAdapter();
+            // return new RealGoogleAuthAdapter(); // <--- เปิดบรรทัดนี้เพื่อใช้ของจริง!
+
+            case 'line':
                 return new MockLineAuthAdapter(); // Line ของจริงต้องทำ LIFF หรือ Redirect ยุ่งยาก ใช้ Mock ไปก่อน
-            
-            case 'facebook': 
+
+            case 'facebook':
                 return new RealFacebookAuthAdapter();
-            
-            default: 
+
+            default:
                 throw new Error("Unknown provider");
         }
     }

@@ -1,5 +1,5 @@
 // --- Initialize Facade ---
-const apiService = new APIFacade('http://localhost:3001/api');
+const apiService = new APIFacade('http://localhost:5000/api');
 
 // --- Global State ---
 let state = {
@@ -29,6 +29,11 @@ function initWizard() {
 }
 initWizard();
 
+const savedUser = localStorage.getItem("currentUser");
+if (savedUser) {
+    state.currentUser = JSON.parse(savedUser);
+}
+
 // --- Auth & Navigation (ASYNC UPDATE!) ---
 async function handleLogin(provider) {
     try {
@@ -42,18 +47,19 @@ async function handleLogin(provider) {
 
         // 1. เรียก Adapter Factory
         const authAdapter = AuthFactory.getAdapter(provider);
-        
+
         // 2. สั่ง login (รอผลลัพธ์ด้วย await)
         const user = await authAdapter.login();
-        
+
         // 3. บันทึกข้อมูล
         state.currentUser = user;
         console.log("Logged in user:", user);
+        localStorage.setItem("currentUser", JSON.stringify(user));
 
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('app').classList.remove('hidden');
         document.getElementById('userNameDisplay').textContent = `ยินดีต้อนรับ, ${user.name}`;
-        
+
         // Close loading and show success
         Swal.fire({
             icon: 'success',
@@ -79,7 +85,7 @@ function showPage(pageId) {
         b.classList.add('text-gray-600');
     });
     const activeBtn = document.getElementById(`nav-${pageId}`);
-    if(activeBtn) {
+    if (activeBtn) {
         activeBtn.classList.add('bg-sky-50', 'text-sky-700', 'font-bold');
         activeBtn.classList.remove('text-gray-600');
     }
@@ -98,13 +104,13 @@ function showPage(pageId) {
 function toggleMobileMenu() { Swal.fire('Menu', 'เมนูซ้ายสำหรับมือถือ', 'info'); }
 
 async function loadHomeData() {
-    const bookings = await apiService.getMySchedule() || [];
+    const bookings = await apiService.getMySchedule(state.currentUser.name) || [];
     const preview = document.getElementById('home-schedule-preview');
     if (bookings.length > 0) {
         const latest = bookings[0];
         const icon = latest.type === 'vehicle' ? '🚍' : '🤸‍♂️';
         preview.innerHTML = `
-            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 ${latest.type==='vehicle'?'border-sky-500':'border-emerald-500'} flex justify-between items-center">
+            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 ${latest.type === 'vehicle' ? 'border-sky-500' : 'border-emerald-500'} flex justify-between items-center">
                 <div class="flex items-center gap-3">
                     <div class="text-2xl">${icon}</div>
                     <div>
@@ -115,8 +121,8 @@ async function loadHomeData() {
                 <span class="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600">ล่าสุด</span>
             </div>
         `;
-        if(latest.type === 'vehicle') {
-             document.getElementById('statusCard').innerHTML = `
+        if (latest.type === 'vehicle') {
+            document.getElementById('statusCard').innerHTML = `
                 <h3 class="text-xl font-bold text-sky-700">รถกำลังมารับ!</h3>
                 <p class="text-2xl mt-1 text-gray-800">${latest.title}</p>
                 <p class="text-lg text-gray-600">อีก 5 นาทีจะถึงหน้าบ้าน</p>
@@ -155,29 +161,53 @@ async function joinActivity(id, name) {
     const result = await Swal.fire({ title: `เข้าร่วม ${name}?`, text: "ต้องการลงชื่อเข้าร่วมกิจกรรมนี้ใช่ไหมครับ", icon: 'question', showCancelButton: true, confirmButtonText: 'ยืนยัน', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#10b981' });
     if (result.isConfirmed) {
         Swal.showLoading();
-        await apiService.joinActivity(id);
+        await apiService.joinActivity(id, state.currentUser.name);
         Swal.fire('สำเร็จ', 'ลงชื่อเรียบร้อยแล้วครับ', 'success').then(() => loadActivities());
     }
 }
 
+
+
 async function loadSchedule() {
     const list = document.getElementById('myScheduleList');
     list.innerHTML = '<div class="text-center">โหลดข้อมูล...</div>';
-    let bookings = await apiService.getMySchedule();
-    if (!bookings) bookings = [{ type: 'vehicle', title: 'จองรถ: รถกอล์ฟ (DEMO)', detail: 'ระบบ Demo (ไม่ต่อ Server)', timestamp: new Date() }];
+
+    let items = await apiService.getMySchedule(state.currentUser.name);
+
+    if (!items) {
+        list.innerHTML = '<div class="text-center text-gray-400 py-10">ไม่มีข้อมูล</div>';
+        return;
+    }
+
     list.innerHTML = '';
-    if (bookings.length === 0) { list.innerHTML = '<div class="text-center text-gray-400 py-10">ยังไม่มีรายการจองครับ</div>'; return; }
-    bookings.forEach(b => {
+
+    if (items.length === 0) {
+        list.innerHTML = '<div class="text-center text-gray-400 py-10">ยังไม่มีรายการ</div>';
+        return;
+    }
+
+    items.forEach(b => {
         const isVeh = b.type === 'vehicle';
         const colorClass = isVeh ? 'border-sky-500 bg-sky-50' : 'border-emerald-500 bg-emerald-50';
         const icon = isVeh ? 'fas fa-bus text-sky-600' : 'fas fa-walking text-emerald-600';
+
         list.innerHTML += `
             <div class="bg-white p-5 rounded-xl shadow-sm border-l-8 ${colorClass} flex justify-between items-center">
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm"><i class="${icon} text-xl"></i></div>
-                    <div><h4 class="font-bold text-lg text-gray-800">${b.title}</h4><p class="text-gray-600">${b.detail}</p><p class="text-xs text-gray-400 mt-1">${new Date(b.timestamp).toLocaleString('th-TH')}</p></div>
+                    <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
+                        <i class="${icon} text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-lg text-gray-800">${b.title}</h4>
+                        <p class="text-gray-600">${b.detail}</p>
+                        <p class="text-xs text-gray-400 mt-1">
+                            ${new Date(b.timestamp).toLocaleString('th-TH')}
+                        </p>
+                    </div>
                 </div>
-                <span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">ยืนยันแล้ว</span>
+                <span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                    ${b.status}
+                </span>
             </div>
         `;
     });
@@ -186,7 +216,7 @@ async function loadSchedule() {
 async function loadVehicles() {
     const list = document.getElementById('vehicleList');
     let data = await apiService.getVehicles();
-    if(!data) data = [{ id: 1, type: 'Golf Cart', name: 'รถกอล์ฟ 01 (Demo)', status: 'available', icon: '🛺' }];
+    if (!data) data = [{ id: 1, type: 'Golf Cart', name: 'รถกอล์ฟ 01 (Demo)', status: 'available', icon: '🛺' }];
     list.innerHTML = '';
     data.forEach(v => {
         const isAvail = v.status === 'available';
@@ -214,8 +244,8 @@ function updateWizardUI() {
     [1, 2, 3].forEach(s => {
         document.getElementById(`step-${s}`).classList.add('hidden');
         const ind = document.getElementById(`step-${s}-ind`).querySelector('div');
-        if(s === step) ind.className = 'w-10 h-10 rounded-full border-2 flex items-center justify-center font-bold mb-1 step-active';
-        else if(s < step) { ind.className = 'w-10 h-10 rounded-full border-2 flex items-center justify-center font-bold mb-1 bg-sky-200 text-sky-800 border-sky-200'; ind.innerHTML = '✓'; }
+        if (s === step) ind.className = 'w-10 h-10 rounded-full border-2 flex items-center justify-center font-bold mb-1 step-active';
+        else if (s < step) { ind.className = 'w-10 h-10 rounded-full border-2 flex items-center justify-center font-bold mb-1 bg-sky-200 text-sky-800 border-sky-200'; ind.innerHTML = '✓'; }
         else { ind.className = 'w-10 h-10 rounded-full border-2 flex items-center justify-center font-bold mb-1 step-inactive'; ind.innerHTML = s; }
     });
     document.getElementById(`step-${step}`).classList.remove('hidden');
@@ -225,18 +255,18 @@ function updateWizardUI() {
 }
 
 function nextStep() {
-    if(state.bookingWizard.step === 1 && !state.bookingWizard.destination) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกปลายทาง', 'warning');
-    if(state.bookingWizard.step < 3) {
+    if (state.bookingWizard.step === 1 && !state.bookingWizard.destination) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกปลายทาง', 'warning');
+    if (state.bookingWizard.step < 3) {
         state.bookingWizard.step++;
-        if(state.bookingWizard.step === 3) updateSummary();
+        if (state.bookingWizard.step === 3) updateSummary();
         updateWizardUI();
     }
 }
-function prevStep() { if(state.bookingWizard.step > 1) { state.bookingWizard.step--; updateWizardUI(); } }
+function prevStep() { if (state.bookingWizard.step > 1) { state.bookingWizard.step--; updateWizardUI(); } }
 
 function selectDestination(val) {
     state.bookingWizard.destination = val;
-    const map = { clubhouse:'สโมสร', market:'ตลาดนัด', clinic:'คลินิก', park:'สวนสาธารณะ' };
+    const map = { clubhouse: 'สโมสร', market: 'ตลาดนัด', clinic: 'คลินิก', park: 'สวนสาธารณะ' };
     state.bookingWizard.destinationName = map[val];
     document.querySelectorAll('.dest-card').forEach(el => el.classList.remove('option-selected'));
     document.querySelector(`.dest-card[data-value="${val}"]`).classList.add('option-selected');
@@ -260,7 +290,7 @@ function selectTimeType(type) {
 
 function adjustPassenger(delta) {
     let newVal = state.bookingWizard.passengers + delta;
-    if(newVal < 1) newVal = 1; if(newVal > 4) newVal = 4;
+    if (newVal < 1) newVal = 1; if (newVal > 4) newVal = 4;
     state.bookingWizard.passengers = newVal;
     document.getElementById('passenger-count').textContent = newVal;
 }
@@ -274,11 +304,18 @@ function updateSummary() {
 async function submitBooking() {
     Swal.showLoading();
     const res = await apiService.bookVehicle({
-        vehicleId: state.bookingWizard.vehicleId,
+        elderlyId: state.currentUser.name,
         destination: state.bookingWizard.destinationName,
-        time: state.bookingWizard.timeType === 'now' ? 'ทันที' : document.getElementById('scheduled-time').value
+        scheduledTime: state.bookingWizard.timeType === 'now'
+            ? 'now'
+            : document.getElementById('scheduled-time').value,
+        passengers: state.bookingWizard.passengers,
+        wheelchair: false,
+        helper: false
     });
-    if(res) Swal.fire('สำเร็จ', 'รถกำลังมารับครับ', 'success').then(() => showPage('home'));
+    if (res) { Swal.fire('สำเร็จ', 'รถกำลังมารับครับ', 'success').then(() => showPage('home')); } else {
+        Swal.fire('ผิดพลาด', 'ไม่สามารถจองได้', 'error');
+    }
 }
 
 function triggerSOS() {

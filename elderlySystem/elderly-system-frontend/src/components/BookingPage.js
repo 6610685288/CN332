@@ -24,6 +24,54 @@ const BookingPage = () => {
         }
     };
 
+    const handleSubmit = async () => {
+        if (!bookingData.destination || !bookingData.scheduledTime) {
+            alert("กรุณาเลือกปลายทางและเวลา");
+            return;
+        }
+
+        try {
+            const response = await fetch('http://localhost:5000/api/booking/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    elderlyId: "E001",
+                    destination: bookingData.destination,
+                    scheduledTime: bookingData.scheduledTime,
+                    passengers: bookingData.passengers,
+                    wheelchair: bookingData.options.wheelchair,
+                    helper: bookingData.options.helper
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error("Server error");
+            }
+
+            const data = await response.json();
+            console.log("Booking saved:", data);
+
+            alert("จองรถสำเร็จแล้ว!");
+
+            // Reset form
+            setCurrentStep(1);
+            setBookingData({
+                vehicleId: null,
+                vehicleName: '',
+                destination: '',
+                scheduledTime: '',
+                passengers: 1,
+                options: { wheelchair: false, helper: false },
+            });
+
+        } catch (error) {
+            console.error("Error:", error);
+            alert("เกิดข้อผิดพลาดในการจอง");
+        }
+    };
+
     return (
         <div className="container mt-5">
             <div className="wizard">
@@ -66,7 +114,7 @@ const BookingPage = () => {
                                 <p>เวลาที่จอง: {bookingData.scheduledTime}</p>
                                 <p>ผู้โดยสาร: {bookingData.passengers}</p>
                             </div>
-                            <button onClick={nextStep} className="btn btn-success">
+                            <button onClick={handleSubmit} className="btn btn-success">
                                 ยืนยัน
                             </button>
                         </div>

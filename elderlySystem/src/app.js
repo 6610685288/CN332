@@ -1,5 +1,3 @@
-import 'bootstrap/dist/css/bootstrap.min.css';
-
 // Load environment variables FIRST
 require('dotenv').config();
 
@@ -9,10 +7,18 @@ const cors = require('cors');
 // Database
 const sequelize = require('./config/database');
 
+// LOAD MODELS
+require('./models/incident.model');
+require('./models/booking.model');
+require('./models/activity.model');
+require('./models/activityJoin.model');
+
 // Routes
 const incidentRoutes = require('./routes/incident.routes');
 const bookingRoutes = require('./routes/booking.routes');
 const authRoutes = require('./routes/auth.routes');
+const activityRoutes = require('./routes/activity.routes');
+const scheduleRoutes = require('./routes/schedule.routes');
 
 const app = express();
 
@@ -24,6 +30,8 @@ app.use(express.json());
 app.use('/api/incidents', incidentRoutes);
 app.use('/api/booking', bookingRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/activities', activityRoutes);
+app.use('/api/schedule', scheduleRoutes);
 
 // Test route (optional but useful)
 app.get('/', (req, res) => {
