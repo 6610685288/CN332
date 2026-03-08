@@ -3,6 +3,7 @@ class APIFacade {
         this.baseUrl = baseUrl;
     }
 
+
     async _request(endpoint, method = 'GET', body = null) {
         const options = {
             method,
@@ -11,7 +12,7 @@ class APIFacade {
         if (body) options.body = JSON.stringify(body);
 
         try {
-            const res = await fetch(`${this.baseUrl}${endpoint}`, options);
+            const res = await fetch(`http://localhost:5000/api${endpoint}`, options);
             if (!res.ok) throw new Error('Status ' + res.status);
             return await res.json();
         } catch (error) {
@@ -29,12 +30,22 @@ class APIFacade {
         return this._request('/booking/create', 'POST', data);
     }
 
-    async getActivities() {
-        return this._request('/activities');
+    async getActivities(elderlyId) {
+        return this._request(`/activities?elderlyId=${elderlyId}`);
     }
 
-    async joinActivity(id, elderlyId) {
-        return this._request('/activities/join', 'POST', { elderlyId, activityId: id });
+    async joinActivity(activityId, elderlyId) {
+        return this._request('/activities/join', 'POST', {
+            activityId: activityId,
+            elderlyId: elderlyId
+        });
+    }
+
+    async leaveActivity(activityId, elderlyId) {
+        return this._request('/activities/leave', 'POST', {
+            activityId,
+            elderlyId
+        });
     }
 
     async getMySchedule(elderlyId) {

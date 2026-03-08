@@ -137,23 +137,65 @@ async function loadHomeData() {
 async function loadActivities() {
     const list = document.getElementById('activityList');
     list.innerHTML = '<div class="text-center text-xl text-gray-500">กำลังโหลดกิจกรรม...</div>';
-    let acts = await apiService.getActivities();
+    let acts = await apiService.getActivities(state.currentUser.name);
+
     if (!acts) acts = [
         { id: 101, name: 'รำไทเก็ก ยามเช้า', time: '07:00 - 08:00', location: 'สวนสาธารณะ', seats: 20, joined: 18, icon: '🧘‍♂️' },
         { id: 102, name: 'แอโรบิค แดนซ์', time: '17:00 - 18:00', location: 'ลานสโมสร', seats: 30, joined: 5, icon: '💃' },
     ];
+
+    acts = acts.map(a => ({
+        ...a,
+        hasJoined: a.hasJoined === true
+    }));
+
     list.innerHTML = '';
     acts.forEach(a => {
         const isFull = a.joined >= a.seats;
+        const hasJoined = a.hasJoined || false;
         list.innerHTML += `
-            <div class="bg-white p-6 rounded-2xl shadow-sm flex flex-col md:flex-row items-center justify-between gap-4 card-hover border border-gray-100">
-                <div class="flex items-center gap-4 w-full">
-                    <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-3xl shrink-0">${a.icon}</div>
-                    <div><h3 class="text-xl font-bold text-gray-800">${a.name}</h3><p class="text-gray-600"><i class="far fa-clock mr-1"></i> ${a.time}</p><p class="text-gray-600"><i class="fas fa-map-marker-alt mr-1 text-red-400"></i> ${a.location}</p><div class="mt-2 text-sm"><span class="bg-gray-100 px-2 py-1 rounded-lg text-gray-600"><i class="fas fa-users"></i> ${a.joined}/${a.seats} คน</span></div></div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm flex flex-col md:flex-row items-center justify-between gap-4 card-hover border border-gray-100">
+
+            <div class="flex items-center gap-4 w-full">
+                <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-3xl shrink-0">
+                    ${a.icon}
                 </div>
-                <button onclick="joinActivity(${a.id}, '${a.name}')" ${isFull ? 'disabled' : ''} class="w-full md:w-auto px-6 py-3 rounded-xl font-bold text-lg shadow-md transition-all whitespace-nowrap ${isFull ? 'bg-gray-300 text-gray-500' : 'bg-emerald-500 hover:bg-emerald-600 text-white'}">${isFull ? 'เต็มแล้ว' : 'ลงชื่อเข้าร่วม'}</button>
+
+                <div>
+                    <h3 class="text-xl font-bold text-gray-800">${a.name}</h3>
+
+                    <p class="text-gray-600">
+                        <i class="far fa-clock mr-1"></i> ${a.time}
+                    </p>
+
+                    <p class="text-gray-600">
+                        <i class="fas fa-map-marker-alt mr-1 text-red-400"></i> ${a.location}
+                    </p>
+
+                    <div class="mt-2 text-sm">
+                        <span class="bg-gray-100 px-2 py-1 rounded-lg text-gray-600">
+                            <i class="fas fa-users"></i> ${a.joined}/${a.seats} คน
+                        </span>
+                    </div>
+                </div>
             </div>
-        `;
+
+            ${hasJoined
+                ? `<button onclick="leaveActivity(${a.id}, '${a.name}')"
+                    class="w-full md:w-auto px-6 py-3 rounded-xl font-bold text-lg shadow-md transition-all whitespace-nowrap bg-red-500 hover:bg-red-600 text-white">
+                    ออกจากกิจกรรม
+                   </button>`
+
+                : `<button onclick="joinActivity(${a.id}, '${a.name}')"
+                    ${isFull ? 'disabled' : ''}
+                    class="w-full md:w-auto px-6 py-3 rounded-xl font-bold text-lg shadow-md transition-all whitespace-nowrap
+                    ${isFull ? 'bg-gray-300 text-gray-500' : 'bg-emerald-500 hover:bg-emerald-600 text-white'}">
+                    ${isFull ? 'เต็มแล้ว' : 'ลงชื่อเข้าร่วม'}
+                   </button>`
+            }
+
+        </div>
+    `;
     });
 }
 
@@ -162,7 +204,30 @@ async function joinActivity(id, name) {
     if (result.isConfirmed) {
         Swal.showLoading();
         await apiService.joinActivity(id, state.currentUser.name);
+        await loadActivities();
         Swal.fire('สำเร็จ', 'ลงชื่อเรียบร้อยแล้วครับ', 'success').then(() => loadActivities());
+    }
+}
+
+async function leaveActivity(id, name) {
+    const result = await Swal.fire({
+        title: `ออกจาก ${name}?`,
+        text: "ต้องการยกเลิกการเข้าร่วมกิจกรรมนี้ใช่ไหม",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'ยืนยัน',
+        cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: '#ef4444'
+    });
+
+    if (result.isConfirmed) {
+        Swal.showLoading();
+
+        await apiService.leaveActivity(id, state.currentUser.name);
+        await loadActivities();
+
+        Swal.fire('สำเร็จ', 'ออกจากกิจกรรมแล้ว', 'success')
+            .then(() => loadActivities());
     }
 }
 
