@@ -1,4 +1,5 @@
 const Incident = require('../models/incident.model');
+const { sendEmail } = require("../services/email.service");
 
 exports.createIncident = async (req, res) => {
     try {
@@ -10,6 +11,21 @@ exports.createIncident = async (req, res) => {
             location,
             type
         });
+
+        if (type === "fall") {
+            await sendEmail(
+                "oungzazahaha@gmail.com",
+                "🚨 Fall Detected Alert",
+                `Fall detected!
+
+Sensor ID: ${sensorId}
+Elderly ID: ${elderlyId}
+Location: ${location}
+Type: ${type}
+
+Please check immediately.`
+            );
+        }
 
         res.status(201).json(newIncident);
 

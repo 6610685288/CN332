@@ -3,7 +3,6 @@ class APIFacade {
         this.baseUrl = baseUrl;
     }
 
-
     async _request(endpoint, method = 'GET', body = null) {
         const options = {
             method,
@@ -12,7 +11,7 @@ class APIFacade {
         if (body) options.body = JSON.stringify(body);
 
         try {
-            const res = await fetch(`http://localhost:5000/api${endpoint}`, options);
+            const res = await fetch(`${this.baseUrl}${endpoint}`, options);
             if (!res.ok) throw new Error('Status ' + res.status);
             return await res.json();
         } catch (error) {
