@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin - Elderly Community Support</title>
+
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Saraburi:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+      body {
+        font-family: "Saraburi", sans-serif;
+        background-color: #f3f4f6;
+      }
+      .sidebar {
+        background-color: #1e293b;
+        color: white;
+        width: 250px;
+        min-height: 100vh;
+      }
+      .content {
+        flex-grow: 1;
+        padding: 2rem;
+      }
+      .nav-link {
+        display: block;
+        padding: 1rem 1.5rem;
+        color: #cbd5e1;
+        text-decoration: none;
+        transition: background 0.2s;
+      }
+      .nav-link:hover,
+      .nav-link.active {
+        background-color: #334155;
+        color: white;
+        border-left: 4px solid #38bdf8;
+      }
+      .card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+    </style>
+  </head>
+  <body class="flex">
+    <!-- Sidebar -->
+    <div class="sidebar flex flex-col">
+      <div
+        class="p-6 text-2xl font-bold border-b border-gray-700 text-center text-sky-400"
+      >
+        <i class="fas fa-cogs mr-2"></i>ระบบจัดการ
+      </div>
+      <nav class="flex-grow mt-4">
+        <a
+          href="#"
+          onclick="showSection('vehicles')"
+          id="nav-vehicles"
+          class="nav-link active"
+        >
+          <i class="fas fa-bus w-6"></i> จัดการยานพาหนะ
+        </a>
+        <a
+          href="#"
+          onclick="showSection('activities')"
+          id="nav-activities"
+          class="nav-link"
+        >
+          <i class="fas fa-calendar-alt w-6"></i> จัดการกิจกรรม
+        </a>
+      </nav>
+      <div class="p-4 border-t border-gray-700 text-center">
+        <a href="/" class="text-gray-400 hover:text-white text-sm"
+          ><i class="fas fa-sign-out-alt mr-1"></i> กลับไปหน้าผู้ใช้</a
+        >
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="content h-screen overflow-y-auto">
+      <!-- ======================= SECTION: VEHICLES ======================= -->
+      <div id="section-vehicles">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-3xl font-bold text-gray-800">จัดการยานพาหนะ</h2>
+          <button
+            onclick="openVehicleModal()"
+            class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded shadow"
+          >
+            <i class="fas fa-plus mr-2"></i>เพิ่มรถใหม่
+          </button>
+        </div>
+
+        <div class="card overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-gray-100 border-b border-gray-200">
+                <th class="p-3">ไอคอน</th>
+                <th class="p-3">ชื่อรถ</th>
+                <th class="p-3">สถานะ</th>
+                <th class="p-3 text-center">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="admin-vehicle-list">
+              <!-- Data will be populated here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ======================= SECTION: ACTIVITIES ======================= -->
+      <div id="section-activities" class="hidden">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-3xl font-bold text-gray-800">จัดการกิจกรรม</h2>
+          <button
+            onclick="openActivityModal()"
+            class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded shadow"
+          >
+            <i class="fas fa-plus mr-2"></i>เพิ่มกิจกรรมใหม่
+          </button>
+        </div>
+
+        <div class="card overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-gray-100 border-b border-gray-200">
+                <th class="p-3">กิจกรรม</th>
+                <th class="p-3">วัน-เวลา</th>
+                <th class="p-3">สถานที่</th>
+                <th class="p-3">ที่นั่ง</th>
+                <th class="p-3 text-center">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="admin-activity-list">
+              <!-- Data will be populated here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script>
+      const apiService = new APIFacade("http://localhost:3001/api");
+
+      // --- Navigation ---
+      function showSection(sectionId) {
+        document
+          .querySelectorAll(".nav-link")
+          .forEach((el) => el.classList.remove("active"));
+        document.getElementById(`nav-${sectionId}`).classList.add("active");
+
+        document.getElementById("section-vehicles").classList.add("hidden");
+        document.getElementById("section-activities").classList.add("hidden");
+
+        document
+          .getElementById(`section-${sectionId}`)
+          .classList.remove("hidden");
+
+        if (sectionId === "vehicles") loadVehicles();
+        if (sectionId === "activities") loadActivities();
+      }
+
+      // ======================= VEHICLE LOGIC =======================
+      async function loadVehicles() {
+        try {
+          const vehicles = await apiService.adminGetVehicles();
+          const tbody = document.getElementById("admin-vehicle-list");
+          tbody.innerHTML = "";
+
+          vehicles.forEach((v) => {
+            const statusColor =
+              v.status === "available"
+                ? "bg-green-100 text-green-800"
+                : "bg-red-100 text-red-800";
+            const statusText = v.status === "available" ? "ว่าง" : "ไม่ว่าง";
+            const nextStatus = v.status === "available" ? "busy" : "available";
+            const toggleBtnText =
+              v.status === "available" ? "ตั้งเป็น ไม่ว่าง" : "ตั้งเป็น ว่าง";
+            const toggleBtnColor =
+              v.status === "available"
+                ? "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                : "bg-green-100 text-green-700 hover:bg-green-200";
+
+            tbody.innerHTML += `
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="p-3 text-2xl">${v.icon}</td>
+                            <td class="p-3 font-medium text-gray-800">${v.name} <span class="text-sm text-gray-400">(${v.type})</span></td>
+                            <td class="p-3"><span class="px-2 py-1 rounded text-sm ${statusColor}">${statusText}</span></td>
+                            <td class="p-3 text-center space-x-2">
+                                <button onclick="toggleVehicleStatus(${v.id}, '${nextStatus}')" class="px-3 py-1 rounded text-sm ${toggleBtnColor}">${toggleBtnText}</button>
+                                <button onclick="deleteVehicle(${v.id})" class="px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded text-sm"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+          });
+        } catch (error) {
+          Swal.fire("Error", "ไม่สามารถโหลดข้อมูลยานพาหนะได้", "error");
+        }
+      }
+
+      async function openVehicleModal() {
+        const { value: formValues } = await Swal.fire({
+          title: "เพิ่มยานพาหนะใหม่",
+          html:
+            '<input id="swal-v-name" class="swal2-input" placeholder="ชื่อรถ (เช่น รถตู้คันที่ 1)">' +
+            '<input id="swal-v-icon" class="swal2-input" placeholder="ไอคอน (Emoji เช่น 🚐)">',
+          focusConfirm: false,
+          showCancelButton: true,
+          confirmButtonText: "บันทึก",
+          cancelButtonText: "ยกเลิก",
+          preConfirm: () => {
+            return {
+              name: document.getElementById("swal-v-name").value,
+              icon: document.getElementById("swal-v-icon").value || "🚗",
+            };
+          },
+        });
+
+        if (formValues && formValues.name) {
+          try {
+            await apiService.adminAddVehicle(formValues);
+            Swal.fire("สำเร็จ", "เพิ่มยานพาหนะเรียบร้อย", "success");
+            loadVehicles();
+          } catch (error) {
+            Swal.fire("Error", "ไม่สามารถเพิ่มข้อมูลได้", "error");
+          }
+        }
+      }
+
+      async function toggleVehicleStatus(id, newStatus) {
+        try {
+          await apiService.adminUpdateVehicleStatus(id, newStatus);
+          loadVehicles();
+        } catch (error) {
+          Swal.fire("Error", "ไม่สามารถเปลี่ยนสถานะได้", "error");
+        }
+      }
+
+      async function deleteVehicle(id) {
+        if (confirm("คุณแน่ใจหรือไม่ที่จะลบยานพาหนะนี้?")) {
+          try {
+            await apiService.adminDeleteVehicle(id);
+            loadVehicles();
+          } catch (error) {
+            Swal.fire("Error", "ไม่สามารถลบข้อมูลได้", "error");
+          }
+        }
+      }
+
+      // ======================= ACTIVITY LOGIC =======================
+      async function loadActivities() {
+        try {
+          const activities = await apiService.adminGetActivities();
+          const tbody = document.getElementById("admin-activity-list");
+          tbody.innerHTML = "";
+
+          activities.forEach((a) => {
+            tbody.innerHTML += `
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="p-3">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-2xl">${a.icon}</span>
+                                    <span class="font-medium text-gray-800">${a.name}</span>
+                                </div>
+                            </td>
+                            <td class="p-3 text-gray-600">${a.time}</td>
+                            <td class="p-3 text-gray-600">${a.location}</td>
+                            <td class="p-3">
+                                <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-200 mt-2">
+                                    <div class="bg-blue-600 h-2.5 rounded-full" style="width: ${(a.joined / a.seats) * 100}%"></div>
+                                </div>
+                                <span class="text-xs text-gray-500">${a.joined}/${a.seats} คน</span>
+                            </td>
+                            <td class="p-3 text-center">
+                                <button onclick="deleteActivity(${a.id})" class="px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded text-sm"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+          });
+        } catch (error) {
+          Swal.fire("Error", "ไม่สามารถโหลดข้อมูลกิจกรรมได้", "error");
+        }
+      }
+
+      async function openActivityModal() {
+        const { value: formValues } = await Swal.fire({
+          title: "เพิ่มกิจกรรมใหม่",
+          html:
+            '<input id="swal-a-name" class="swal2-input" placeholder="ชื่อกิจกรรม">' +
+            '<input id="swal-a-time" class="swal2-input" placeholder="เวลา (เช่น 08:00 - 09:00)">' +
+            '<input id="swal-a-loc" class="swal2-input" placeholder="สถานที่">' +
+            '<input id="swal-a-seats" type="number" class="swal2-input" placeholder="จำนวนที่รับ (เช่น 20)">',
+          focusConfirm: false,
+          showCancelButton: true,
+          confirmButtonText: "บันทึก",
+          cancelButtonText: "ยกเลิก",
+          preConfirm: () => {
+            return {
+              name: document.getElementById("swal-a-name").value,
+              time: document.getElementById("swal-a-time").value,
+              location: document.getElementById("swal-a-loc").value,
+              seats: document.getElementById("swal-a-seats").value,
+              icon: "🎯", // Default icon
+            };
+          },
+        });
+
+        if (formValues && formValues.name) {
+          try {
+            await apiService.adminAddActivity(formValues);
+            Swal.fire("สำเร็จ", "เพิ่มกิจกรรมเรียบร้อย", "success");
+            loadActivities();
+          } catch (error) {
+            Swal.fire("Error", "ไม่สามารถเพิ่มข้อมูลได้", "error");
+          }
+        }
+      }
+
+      async function deleteActivity(id) {
+        if (confirm("คุณแน่ใจหรือไม่ที่จะลบกิจกรรมนี้?")) {
+          try {
+            await apiService.adminDeleteActivity(id);
+            loadActivities();
+          } catch (error) {
+            Swal.fire("Error", "ไม่สามารถลบข้อมูลได้", "error");
+          }
+        }
+      }
+
+      // Initialize
+      loadVehicles();
+
+      // --- ระบบป้องกันหน้า Admin แบบง่าย (Mock Auth) ---
+      const ADMIN_PASSWORD = "1234"; // เปลี่ยนรหัสผ่านตรงนี้ได้นะ
+      const enteredPassword = prompt("กรุณาใส่รหัสผ่านผู้ดูแลระบบ:");
+
+      if (enteredPassword !== ADMIN_PASSWORD) {
+        alert("รหัสผ่านไม่ถูกต้อง! คุณไม่มีสิทธิ์เข้าถึงหน้านี้");
+        window.location.href = "/"; // เตะกลับไปหน้าหลัก
+      }
+      // ------------------------------------------------
+    </script>
+  </body>
+</html>
