@@ -150,9 +150,10 @@
     </div>
 
     <!-- Scripts -->
+    <script src="js/config.js"></script>
     <script src="js/api.js"></script>
     <script>
-      const apiService = new APIFacade("http://localhost:3001/api");
+      const apiService = new APIFacade(window.APP_CONFIG.apiBase);
 
       // --- Navigation ---
       function showSection(sectionId) {
@@ -339,16 +340,15 @@
         }
       }
 
-      // Initialize
-      loadVehicles();
-
       // --- ระบบป้องกันหน้า Admin แบบง่าย (Mock Auth) ---
       const ADMIN_PASSWORD = "1234"; // เปลี่ยนรหัสผ่านตรงนี้ได้นะ
       const enteredPassword = prompt("กรุณาใส่รหัสผ่านผู้ดูแลระบบ:");
 
       if (enteredPassword !== ADMIN_PASSWORD) {
         alert("รหัสผ่านไม่ถูกต้อง! คุณไม่มีสิทธิ์เข้าถึงหน้านี้");
-        window.location.href = "/"; // เตะกลับไปหน้าหลัก
+        window.location.href = "/";
+      } else {
+        loadVehicles();
       }
       // ------------------------------------------------
     </script>

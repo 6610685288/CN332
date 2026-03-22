@@ -1,5 +1,5 @@
 // --- Initialize Facade ---
-const apiService = new APIFacade('http://localhost:5000/api');
+const apiService = new APIFacade(window.APP_CONFIG.apiBase);
 
 // --- Global State ---
 let state = {
@@ -104,7 +104,12 @@ function showPage(pageId) {
 function toggleMobileMenu() { Swal.fire('Menu', 'เมนูซ้ายสำหรับมือถือ', 'info'); }
 
 async function loadHomeData() {
-    const bookings = await apiService.getMySchedule(state.currentUser.name) || [];
+    let bookings = [];
+    try {
+        bookings = await apiService.getMySchedule(state.currentUser.name);
+    } catch (e) {
+        console.warn("loadHomeData:", e);
+    }
     const preview = document.getElementById('home-schedule-preview');
     if (bookings.length > 0) {
         const latest = bookings[0];
@@ -137,7 +142,13 @@ async function loadHomeData() {
 async function loadActivities() {
     const list = document.getElementById('activityList');
     list.innerHTML = '<div class="text-center text-xl text-gray-500">กำลังโหลดกิจกรรม...</div>';
-    let acts = await apiService.getActivities(state.currentUser.name);
+    let acts;
+    try {
+        acts = await apiService.getActivities(state.currentUser.name);
+    } catch (e) {
+        console.warn("loadActivities:", e);
+        acts = null;
+    }
 
     if (!acts) acts = [
         { id: 101, name: 'รำไทเก็ก ยามเช้า', time: '07:00 - 08:00', location: 'สวนสาธารณะ', seats: 20, joined: 18, icon: '🧘‍♂️' },
@@ -202,10 +213,14 @@ async function loadActivities() {
 async function joinActivity(id, name) {
     const result = await Swal.fire({ title: `เข้าร่วม ${name}?`, text: "ต้องการลงชื่อเข้าร่วมกิจกรรมนี้ใช่ไหมครับ", icon: 'question', showCancelButton: true, confirmButtonText: 'ยืนยัน', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#10b981' });
     if (result.isConfirmed) {
-        Swal.showLoading();
-        await apiService.joinActivity(id, state.currentUser.name);
-        await loadActivities();
-        Swal.fire('สำเร็จ', 'ลงชื่อเรียบร้อยแล้วครับ', 'success').then(() => loadActivities());
+        Swal.fire({ title: "กำลังดำเนินการ...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        try {
+            await apiService.joinActivity(id, state.currentUser.name);
+            await loadActivities();
+            Swal.fire('สำเร็จ', 'ลงชื่อเรียบร้อยแล้วครับ', 'success').then(() => loadActivities());
+        } catch (e) {
+            Swal.fire('ไม่สำเร็จ', e.message || 'ไม่สามารถลงชื่อได้', 'error');
+        }
     }
 }
 
@@ -221,13 +236,15 @@ async function leaveActivity(id, name) {
     });
 
     if (result.isConfirmed) {
-        Swal.showLoading();
-
-        await apiService.leaveActivity(id, state.currentUser.name);
-        await loadActivities();
-
-        Swal.fire('สำเร็จ', 'ออกจากกิจกรรมแล้ว', 'success')
-            .then(() => loadActivities());
+        Swal.fire({ title: "กำลังดำเนินการ...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        try {
+            await apiService.leaveActivity(id, state.currentUser.name);
+            await loadActivities();
+            Swal.fire('สำเร็จ', 'ออกจากกิจกรรมแล้ว', 'success')
+                .then(() => loadActivities());
+        } catch (e) {
+            Swal.fire('ไม่สำเร็จ', e.message || 'ไม่สามารถออกจากกิจกรรมได้', 'error');
+        }
     }
 }
 
@@ -237,7 +254,13 @@ async function loadSchedule() {
     const list = document.getElementById('myScheduleList');
     list.innerHTML = '<div class="text-center">โหลดข้อมูล...</div>';
 
-    let items = await apiService.getMySchedule(state.currentUser.name);
+    let items;
+    try {
+        items = await apiService.getMySchedule(state.currentUser.name);
+    } catch (e) {
+        console.warn("loadSchedule:", e);
+        items = null;
+    }
 
     if (!items) {
         list.innerHTML = '<div class="text-center text-gray-400 py-10">ไม่มีข้อมูล</div>';
@@ -280,7 +303,13 @@ async function loadSchedule() {
 
 async function loadVehicles() {
     const list = document.getElementById('vehicleList');
-    let data = await apiService.getVehicles();
+    let data;
+    try {
+        data = await apiService.getVehicles();
+    } catch (e) {
+        console.warn("loadVehicles:", e);
+        data = null;
+    }
     if (!data) data = [{ id: 1, type: 'Golf Cart', name: 'รถกอล์ฟ 01 (Demo)', status: 'available', icon: '🛺' }];
     list.innerHTML = '';
     data.forEach(v => {
@@ -367,19 +396,25 @@ function updateSummary() {
 }
 
 async function submitBooking() {
-    Swal.showLoading();
-    const res = await apiService.bookVehicle({
-        elderlyId: state.currentUser.name,
-        destination: state.bookingWizard.destinationName,
-        scheduledTime: state.bookingWizard.timeType === 'now'
-            ? 'now'
-            : document.getElementById('scheduled-time').value,
-        passengers: state.bookingWizard.passengers,
-        wheelchair: false,
-        helper: false
-    });
-    if (res) { Swal.fire('สำเร็จ', 'รถกำลังมารับครับ', 'success').then(() => showPage('home')); } else {
-        Swal.fire('ผิดพลาด', 'ไม่สามารถจองได้', 'error');
+    Swal.fire({ title: "กำลังจอง...", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    try {
+        const res = await apiService.bookVehicle({
+            userId: state.currentUser.name,
+            destination: state.bookingWizard.destinationName,
+            scheduledTime: state.bookingWizard.timeType === 'now'
+                ? 'ทันที'
+                : document.getElementById('scheduled-time').value,
+            passengers: state.bookingWizard.passengers,
+            wheelchair: false,
+            helper: false
+        });
+        if (res && res.success) {
+            Swal.fire('สำเร็จ', 'รถกำลังมารับครับ', 'success').then(() => showPage('home'));
+        } else {
+            Swal.fire('ผิดพลาด', 'ไม่สามารถจองได้', 'error');
+        }
+    } catch (e) {
+        Swal.fire('ผิดพลาด', e.message || 'ไม่สามารถจองได้', 'error');
     }
 }
 

@@ -1,103 +1,124 @@
 class APIFacade {
     constructor(baseUrl) {
-        this.baseUrl = baseUrl;
+        this.baseUrl = String(baseUrl || "").replace(/\/$/, "");
     }
 
+    _url(endpoint) {
+        const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+        return `${this.baseUrl}${path}`;
+    }
 
-    async _request(endpoint, method = 'GET', body = null) {
+    async _request(endpoint, method = "GET", body = null) {
         const options = {
             method,
-            headers: { 'Content-Type': 'application/json' }
+            headers: { "Content-Type": "application/json" },
         };
-        if (body) options.body = JSON.stringify(body);
-
-        try {
-            const res = await fetch(`http://localhost:5000/api${endpoint}`, options);
-            if (!res.ok) throw new Error('Status ' + res.status);
-            return await res.json();
-        } catch (error) {
-            console.warn("API Error (Facade caught this):", error);
-            return null; // Return null to let app.js handle fallback
+        if (body != null && method !== "GET" && method !== "HEAD") {
+            options.body = JSON.stringify(body);
         }
+
+        const res = await fetch(this._url(endpoint), options);
+        const text = await res.text();
+        let data = null;
+        if (text) {
+            try {
+                data = JSON.parse(text);
+            } catch {
+                data = text;
+            }
+        }
+        if (!res.ok) {
+            const msg =
+                typeof data === "object" && data && data.error
+                    ? data.error
+                    : `HTTP ${res.status}`;
+            const err = new Error(msg);
+            err.status = res.status;
+            throw err;
+        }
+        return data;
     }
 
-    // --- Public Methods ---
     async getVehicles() {
-        return this._request('/vehicles');
+        return this._request("/vehicles");
     }
 
     async bookVehicle(data) {
-        return this._request('/booking/create', 'POST', data);
-    }
-
-    async getActivities(elderlyId) {
-        return this._request(`/activities?elderlyId=${elderlyId}`);
-    }
-
-    async joinActivity(activityId, elderlyId) {
-        return this._request('/activities/join', 'POST', {
-            activityId: activityId,
-            elderlyId: elderlyId
+        return this._request("/book-vehicle", "POST", {
+            destination: data.destination,
+            time: data.scheduledTime ?? data.time,
+            userId: data.userId || data.elderlyId,
+            passengers: data.passengers,
+            wheelchair: data.wheelchair,
+            helper: data.helper,
         });
     }
 
-    async leaveActivity(activityId, elderlyId) {
-        return this._request('/activities/leave', 'POST', {
+    async getActivities(userId) {
+        return this._request(
+            `/activities?userId=${encodeURIComponent(userId)}`
+        );
+    }
+
+    async joinActivity(activityId, userId) {
+        return this._request("/join-activity", "POST", {
             activityId,
-            elderlyId
+            userId,
         });
     }
 
-    async getMySchedule(elderlyId) {
-        try {
-            // 1️⃣ Get bookings
-            const bookings = await this._request(
-                `/booking/my-bookings/${encodeURIComponent(elderlyId)}`
-            );
+    async leaveActivity(activityId, userId) {
+        return this._request("/leave-activity", "POST", {
+            activityId,
+            userId,
+        });
+    }
 
-            // 2️⃣ Get joined activities
-            const activities = await this._request(
-                `/activities/my/${encodeURIComponent(elderlyId)}`
-            );
+    async getMySchedule(userId) {
+        const items = await this._request(
+            `/my-bookings?userId=${encodeURIComponent(userId)}`
+        );
+        if (!Array.isArray(items)) return [];
+        return items.map((b) => ({
+            type: b.type,
+            title: b.title,
+            detail: b.detail,
+            timestamp: b.timestamp,
+            status: b.type === "vehicle" ? "pending" : "joined",
+        }));
+    }
 
-            let scheduleItems = [];
+    async adminGetVehicles() {
+        return this._request("/admin/vehicles");
+    }
 
-            // Format vehicle bookings
-            if (bookings) {
-                const bookingItems = bookings.map(b => ({
-                    type: 'vehicle',
-                    title: `จองรถไป ${b.destination}`,
-                    detail: `เวลา: ${b.scheduledTime} | ผู้โดยสาร: ${b.passengers} คน`,
-                    timestamp: b.createdAt,
-                    status: 'pending'
-                }));
+    async adminAddVehicle(formValues) {
+        return this._request("/admin/vehicles", "POST", {
+            name: formValues.name,
+            icon: formValues.icon,
+            type: formValues.type || "รถกอล์ฟ",
+        });
+    }
 
-                scheduleItems = scheduleItems.concat(bookingItems);
-            }
+    async adminUpdateVehicleStatus(id, newStatus) {
+        return this._request(`/admin/vehicles/${id}`, "PUT", {
+            status: newStatus,
+        });
+    }
 
-            // Format joined activities
-            if (activities) {
-                const activityItems = activities.map(a => ({
-                    type: 'activity',
-                    title: `กิจกรรม ID: ${a.activityId}`,
-                    detail: `เข้าร่วมแล้ว`,
-                    timestamp: a.createdAt,
-                    status: 'joined'
-                }));
+    async adminDeleteVehicle(id) {
+        return this._request(`/admin/vehicles/${id}`, "DELETE");
+    }
 
-                scheduleItems = scheduleItems.concat(activityItems);
-            }
+    async adminGetActivities() {
+        return this._request("/admin/activities");
+    }
 
-            // Sort newest first
-            scheduleItems.sort((a, b) =>
-                new Date(b.timestamp) - new Date(a.timestamp)
-            );
+    async adminAddActivity(formValues) {
+        return this._request("/admin/activities", "POST", formValues);
+    }
 
-            return scheduleItems;
-
-        } catch (error) {
-            console.error("Schedule error:", error);
-            return [];
-        }
+    async adminDeleteActivity(id) {
+        return this._request(`/admin/activities/${id}`, "DELETE");
     }
 }
