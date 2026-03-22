@@ -22,3 +22,6 @@ https://www.canva.com/design/DAHAtXQVrJ4/K7ENyw87RlC_mv8x42IgBA/edit
 
 # HW6
 https://www.canva.com/design/DAHBXoXtf8k/jmIJBCfdkv2UASyPosSMow/edit
+
+# HW7
+https://www.canva.com/design/DAHErs76NGc/2iCBW6dfOyjdsDsWmwATdA/edit
