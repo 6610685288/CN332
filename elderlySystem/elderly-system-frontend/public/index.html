@@ -35,33 +35,32 @@
             </button>
 
             <!-- Line Button -->
-            <!-- <button onclick="handleLogin('line')" class="w-full bg-[#06C755] text-white p-4 rounded-xl flex items-center justify-center gap-3 shadow-sm hover:bg-[#05b64d] btn-press transition-all">
+            <button onclick="handleLogin('line')" class="w-full bg-[#06C755] text-white p-4 rounded-xl flex items-center justify-center gap-3 shadow-sm hover:bg-[#05b64d] btn-press transition-all">
                 <i class="fab fa-line text-2xl"></i>
                 <span class="text-lg font-bold">เข้าสู่ระบบด้วย LINE</span>
-            </button> -->
-
-            <!-- Facebook Button -->
-            <button onclick="handleLogin('facebook')"
-                class="w-full bg-[#1877F2] text-white p-4 rounded-xl flex items-center justify-center gap-3 shadow-sm hover:bg-[#166fe5] btn-press transition-all">
-                <i class="fab fa-facebook text-2xl"></i>
-                <span class="text-lg font-bold">เข้าสู่ระบบด้วย Facebook</span>
             </button>
         </div>
         <p class="mt-6 text-gray-400 text-sm">ไม่ต้องจำรหัสผ่าน แค่กดปุ่มเดียว</p>
     </div>
 
     <!-- Main App (เหมือนเดิม) -->
-    <div id="app" class="hidden flex h-full">
-        <!-- Sidebar -->
-        <nav class="w-64 bg-white shadow-lg flex-col hidden md:flex justify-between z-20">
+    <div id="app" class="hidden h-screen flex overflow-hidden">
+        <!-- Sidebar (Fixed on mobile, static on desktop) -->
+        <nav id="main-nav" class="fixed md:static inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition-transform duration-300 w-64 bg-white shadow-lg flex flex-col justify-between z-50">
             <div>
-                <div class="p-6 bg-sky-600 text-white">
-                    <h2 class="text-2xl font-bold">หมู่บ้านแสนสุข</h2>
-                    <p id="userNameDisplay" class="text-sky-100 mt-1">ยินดีต้อนรับ</p>
+                <!-- Profile Section -->
+                <div class="p-6 bg-sky-600 text-white rounded-b-3xl shadow-lg mb-4 flex justify-between items-center">
+                    <div>
+                        <p class="text-sky-100 text-sm">ผู้ใช้งาน</p>
+                        <h2 id="userNameDisplay" class="text-xl font-bold truncate">กรุณาเข้าสู่ระบบ</h2>
+                    </div>
+                    <button onclick="handleLogout()" class="bg-sky-500 hover:bg-sky-400 p-2 rounded-lg transition-colors" title="ออกจากระบบ">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
                 </div>
                 <div class="flex flex-col p-4 gap-2">
                     <button onclick="showPage('home')" id="nav-home"
-                        class="nav-btn p-4 text-left text-lg rounded-lg hover:bg-sky-50 text-sky-700 font-bold bg-sky-50">
+                        class="nav-btn p-4 text-left text-lg rounded-lg bg-sky-100 text-sky-700 font-bold">
                         <i class="fas fa-home w-8 mr-2"></i> หน้าหลัก
                     </button>
                     <button onclick="showPage('shuttle')" id="nav-shuttle"
@@ -76,9 +75,33 @@
                         class="nav-btn p-4 text-left text-lg rounded-lg hover:bg-sky-50 text-gray-600">
                         <i class="fas fa-calendar-alt w-8 mr-2"></i> ตารางของฉัน
                     </button>
+                    <!-- Admin Only Link -->
+                    <button onclick="showPage('admin')" id="nav-admin"
+                        class="nav-btn p-4 text-left text-lg rounded-lg hover:bg-purple-50 text-purple-600 font-bold hidden">
+                        <i class="fas fa-user-shield w-8 mr-2"></i> จัดการระบบ (Admin)
+                    </button>
                 </div>
             </div>
-            <div class="p-4">
+            <div class="p-4 border-t space-y-2">
+                <!-- Accessibility: Font Size -->
+                <div class="p-2 flex items-center justify-between text-sm text-gray-500 bg-gray-50 rounded-lg">
+                    <span>ขนาดตัวอักษร</span>
+                    <div class="flex gap-2">
+                        <button onclick="changeFontSize(-2)" class="w-8 h-8 rounded border bg-white">-</button>
+                        <button onclick="changeFontSize(2)" class="w-8 h-8 rounded border bg-white">+</button>
+                    </div>
+                </div>
+
+                <!-- Profile button at bottom -->
+                <button onclick="showPage('profile')" id="nav-profile"
+                    class="nav-btn w-full p-3 text-left text-base rounded-lg hover:bg-sky-50 text-gray-600 border border-gray-100">
+                    <i class="fas fa-user-circle w-8 mr-2"></i> โปรไฟล์ของฉัน
+                </button>
+
+                <button onclick="handleLogout()"
+                    class="w-full p-4 text-left text-lg rounded-lg hover:bg-red-50 text-red-600 font-bold">
+                    <i class="fas fa-sign-out-alt w-8 mr-2"></i> ออกจากระบบ
+                </button>
                 <button onclick="triggerSOS()"
                     class="w-full bg-red-500 text-white p-6 rounded-xl text-2xl font-bold shadow-lg hover:bg-red-600 animate-pulse">
                     <i class="fas fa-exclamation-circle mr-2"></i> SOS ฉุกเฉิน
@@ -90,7 +113,11 @@
         <div
             class="md:hidden fixed top-0 w-full bg-sky-600 text-white p-4 z-40 flex justify-between items-center shadow-md">
             <div class="text-xl font-bold">หมู่บ้านแสนสุข</div>
-            <button onclick="toggleMobileMenu()" class="text-2xl"><i class="fas fa-bars"></i></button>
+            <div class="flex gap-4">
+                <button id="mobile-admin-btn" onclick="showPage('admin')" class="text-xl hidden"><i class="fas fa-user-shield"></i></button>
+                <button onclick="handleLogout()" class="text-xl text-red-200"><i class="fas fa-sign-out-alt"></i></button>
+                <button onclick="toggleMobileMenu()" class="text-2xl"><i class="fas fa-bars"></i></button>
+            </div>
         </div>
 
         <!-- Content Area (เหมือนเดิม) -->
@@ -99,6 +126,9 @@
 
             <!-- 1. Home -->
             <div id="page-home" class="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
+                <!-- NEW: Announcement Area -->
+                <div id="announcement-area"></div>
+                
                 <!-- Status Card -->
                 <div id="statusCard" class="bg-white p-6 rounded-2xl shadow-sm border-l-8 border-gray-300">
                     <h3 class="text-xl font-bold text-gray-500">สถานะปัจจุบัน</h3>
@@ -122,102 +152,173 @@
                         <button onclick="showPage('schedule')" class="text-sky-600 font-bold">ดูทั้งหมด <i
                                 class="fas fa-arrow-right"></i></button>
                     </div>
-                    <div id="home-schedule-preview" class="space-y-3"></div>
+                    <div id="home-schedule-preview" class="space-y-3">
+                    </div>
                 </div>
             </div>
 
-            <!-- 2. Shuttle -->
-            <div id="page-shuttle" class="hidden p-4 md:p-8 max-w-5xl mx-auto pb-24">
-                <div class="flex items-center gap-4 mb-6">
-                    <button onclick="showPage('home')" class="bg-white p-3 rounded-full shadow-sm"><i
-                            class="fas fa-arrow-left"></i></button>
-                    <h2 class="text-3xl font-bold text-sky-800">เลือกรถรับ-ส่ง</h2>
-                </div>
-                <div id="vehicleList" class="grid md:grid-cols-2 gap-4"></div>
-            </div>
+            <!-- 1.1 Profile -->
+            <div id="page-profile" class="hidden p-4 md:p-8 max-w-2xl mx-auto pb-24">
+                <div class="bg-white p-8 rounded-3xl shadow-lg border">
+                    <div class="flex flex-col items-center mb-8">
+                        <div class="w-24 h-24 bg-sky-100 text-sky-600 rounded-full flex items-center justify-center text-4xl mb-4">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <h2 class="text-3xl font-bold text-gray-800">โปรไฟล์ของฉัน</h2>
+                        <p class="text-gray-400 text-sm mt-1" id="profile-elderly-id">ID: -</p>
+                    </div>
 
-            <!-- 3. Booking Wizard (เหมือนเดิม) -->
-            <div id="page-booking" class="hidden p-4 md:p-8 max-w-5xl mx-auto pb-24 h-full flex flex-col">
-                <div class="flex items-center gap-4 mb-6 shrink-0">
-                    <button onclick="showPage('shuttle')" class="bg-white p-3 rounded-full shadow-sm"><i
-                            class="fas fa-arrow-left"></i></button>
-                    <h2 class="text-2xl font-bold text-sky-800">จองรถ: <span id="booking-vehicle-name"
-                            class="text-sky-600">...</span></h2>
-                </div>
-                <div class="flex justify-between items-center mb-8 px-4 shrink-0" id="wizard-indicators"></div>
-                <div class="bg-white p-6 rounded-2xl shadow-sm flex-1 overflow-y-auto relative">
-                    <div id="step-1" class="wizard-step">
-                        <h3 class="text-xl font-bold mb-4">จะไปที่ไหนครับ?</h3>
+                    <form id="profileForm" onsubmit="handleUpdateProfile(event)" class="space-y-5">
+                        <!-- Username (required) -->
+                        <div>
+                            <label class="block font-bold text-gray-700 mb-2">
+                                <i class="fas fa-at text-sky-500 mr-1"></i> ชื่อผู้ใช้งาน (Username) <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" id="profile-username"
+                                class="w-full p-4 border-2 rounded-2xl focus:ring-2 focus:ring-sky-500 outline-none font-medium"
+                                placeholder="เช่น john_doe" required>
+                            <p class="text-xs text-gray-400 mt-1">* ใช้ตัวอักษร ตัวเลข หรือ _ ได้ ห้ามมีช่องว่าง (ค่าเริ่มต้น = อีเมลที่ใช้สมัคร)</p>
+                        </div>
+
+                        <hr class="border-gray-100">
+                        <p class="text-sm text-gray-400 font-medium">ข้อมูลเพิ่มเติม (ไม่บังคับ)</p>
+
+                        <!-- ชื่อ + นามสกุล -->
                         <div class="grid grid-cols-2 gap-4">
-                            <div onclick="selectDestination('clubhouse')"
-                                class="dest-card p-4 border-2 rounded-xl text-center cursor-pointer hover:bg-sky-50 transition-all border-gray-200"
-                                data-value="clubhouse">
-                                <div class="text-4xl mb-2">🏊‍♂️</div><span class="font-bold">สโมสร</span>
+                            <div>
+                                <label class="block font-bold text-gray-700 mb-2">
+                                    <i class="fas fa-user text-gray-400 mr-1"></i> ชื่อ
+                                </label>
+                                <input type="text" id="profile-firstname"
+                                    class="w-full p-4 border rounded-2xl focus:ring-2 focus:ring-sky-500 outline-none"
+                                    placeholder="เช่น สมชาย">
                             </div>
-                            <div onclick="selectDestination('market')"
-                                class="dest-card p-4 border-2 rounded-xl text-center cursor-pointer hover:bg-sky-50 transition-all border-gray-200"
-                                data-value="market">
-                                <div class="text-4xl mb-2">🥦</div><span class="font-bold">ตลาดนัด</span>
-                            </div>
-                            <div onclick="selectDestination('clinic')"
-                                class="dest-card p-4 border-2 rounded-xl text-center cursor-pointer hover:bg-sky-50 transition-all border-gray-200"
-                                data-value="clinic">
-                                <div class="text-4xl mb-2">🏥</div><span class="font-bold">คลินิก</span>
-                            </div>
-                            <div onclick="selectDestination('park')"
-                                class="dest-card p-4 border-2 rounded-xl text-center cursor-pointer hover:bg-sky-50 transition-all border-gray-200"
-                                data-value="park">
-                                <div class="text-4xl mb-2">🌳</div><span class="font-bold">สวน</span>
+                            <div>
+                                <label class="block font-bold text-gray-700 mb-2">
+                                    <i class="fas fa-user text-gray-400 mr-1"></i> นามสกุล
+                                </label>
+                                <input type="text" id="profile-lastname"
+                                    class="w-full p-4 border rounded-2xl focus:ring-2 focus:ring-sky-500 outline-none"
+                                    placeholder="เช่น ใจดี">
                             </div>
                         </div>
-                    </div>
-                    <div id="step-2" class="wizard-step hidden">
-                        <h3 class="text-xl font-bold mb-4">รายละเอียด</h3>
-                        <div class="mb-6">
-                            <label class="block font-bold mb-2">เวลาเดินทาง</label>
-                            <div class="flex gap-4">
-                                <button onclick="selectTimeType('now')" id="btn-time-now"
-                                    class="flex-1 p-4 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-700 font-bold">ด่วน
-                                    (ทันที)</button>
-                                <button onclick="selectTimeType('later')" id="btn-time-later"
-                                    class="flex-1 p-4 rounded-xl border-2 border-gray-200">จองล่วงหน้า</button>
+
+                        <!-- วันเกิด + เบอร์โทร -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block font-bold text-gray-700 mb-2">
+                                    <i class="fas fa-birthday-cake text-pink-400 mr-1"></i> วันเกิด
+                                </label>
+                                <input type="date" id="profile-birthdate"
+                                    class="w-full p-4 border rounded-2xl focus:ring-2 focus:ring-sky-500 outline-none">
                             </div>
-                            <div id="time-picker-container" class="hidden mt-4 bg-gray-50 p-4 rounded-xl"><input
-                                    type="time" id="scheduled-time" class="w-full p-3 rounded-lg border"></div>
-                        </div>
-                        <div class="mb-6">
-                            <label class="block font-bold mb-2">ผู้โดยสาร</label>
-                            <div class="flex items-center gap-4 bg-gray-50 p-2 rounded-xl w-fit">
-                                <button onclick="adjustPassenger(-1)"
-                                    class="w-10 h-10 bg-white shadow rounded font-bold">-</button>
-                                <span id="passenger-count" class="text-xl font-bold w-6 text-center">1</span>
-                                <button onclick="adjustPassenger(1)"
-                                    class="w-10 h-10 bg-white shadow rounded font-bold">+</button>
+                            <div>
+                                <label class="block font-bold text-gray-700 mb-2">
+                                    <i class="fas fa-phone text-green-400 mr-1"></i> เบอร์โทรศัพท์
+                                </label>
+                                <input type="tel" id="profile-phone"
+                                    class="w-full p-4 border rounded-2xl focus:ring-2 focus:ring-sky-500 outline-none"
+                                    placeholder="0812345678">
                             </div>
                         </div>
-                    </div>
-                    <div id="step-3" class="wizard-step hidden">
-                        <h3 class="text-xl font-bold mb-4 text-center">ตรวจสอบข้อมูล</h3>
-                        <div class="bg-sky-50 p-6 rounded-xl border border-sky-100 space-y-3">
-                            <div class="flex justify-between border-b pb-2"><span class="text-gray-500">รถ</span><span
-                                    class="font-bold" id="sum-vehicle">-</span></div>
-                            <div class="flex justify-between border-b pb-2"><span
-                                    class="text-gray-500">ไปที่</span><span class="font-bold" id="sum-dest">-</span>
-                            </div>
-                            <div class="flex justify-between border-b pb-2"><span class="text-gray-500">เวลา</span><span
-                                    class="font-bold text-orange-600" id="sum-time">-</span></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="mt-4 shrink-0 flex gap-4">
-                    <button id="btn-back" onclick="prevStep()"
-                        class="flex-1 bg-gray-200 p-4 rounded-xl font-bold hidden">ย้อนกลับ</button>
-                    <button id="btn-next" onclick="nextStep()"
-                        class="flex-1 bg-sky-600 text-white p-4 rounded-xl font-bold shadow-lg">ต่อไป</button>
-                    <button id="btn-confirm" onclick="submitBooking()"
-                        class="flex-1 bg-green-500 text-white p-4 rounded-xl font-bold shadow-lg hidden">ยืนยัน</button>
+
+                        <button type="submit"
+                            class="w-full bg-sky-600 text-white p-4 rounded-2xl font-bold text-xl shadow-lg hover:bg-sky-700 transition-all mt-2">
+                            <i class="fas fa-save mr-2"></i> บันทึกข้อมูล
+                        </button>
+                    </form>
                 </div>
             </div>
+
+            <!-- 2. Shuttle (Grab-style) -->
+            <div id="page-shuttle" class="hidden max-w-lg mx-auto pb-24">
+
+                <!-- Header Banner -->
+                <div class="bg-gradient-to-br from-sky-600 to-sky-800 px-6 pt-8 pb-16 relative">
+                    <div class="flex items-center gap-3 mb-6">
+                        <button onclick="showPage('home')" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h2 class="text-2xl font-bold text-white">เรียกรถรับ-ส่ง</h2>
+                    </div>
+                    <p class="text-sky-100 text-lg">จะไปที่ไหนวันนี้?</p>
+                    <p class="text-sky-200 text-sm mt-1">เลือกปลายทางแล้วระบบจะหารถให้อัตโนมัติ</p>
+                </div>
+
+                <!-- Destination Card (overlapping header) -->
+                <div class="px-4 -mt-8">
+                    <div class="bg-white rounded-3xl shadow-xl p-5">
+
+                        <!-- Step 1: Destination -->
+                        <h3 class="font-bold text-gray-600 text-sm mb-3 uppercase tracking-wide">📍 เลือกปลายทาง</h3>
+                        <div class="grid grid-cols-2 gap-3 mb-5">
+                            <div onclick="grabSelectDest('clubhouse', 'สโมสร')"
+                                class="grab-dest-card flex flex-col items-center p-4 border-2 border-gray-100 rounded-2xl cursor-pointer hover:border-sky-400 hover:bg-sky-50 transition-all"
+                                data-val="clubhouse">
+                                <span class="text-3xl mb-1">🏊‍♂️</span>
+                                <span class="font-bold text-gray-700">สโมสร</span>
+                            </div>
+                            <div onclick="grabSelectDest('market', 'ตลาดนัด')"
+                                class="grab-dest-card flex flex-col items-center p-4 border-2 border-gray-100 rounded-2xl cursor-pointer hover:border-sky-400 hover:bg-sky-50 transition-all"
+                                data-val="market">
+                                <span class="text-3xl mb-1">🥦</span>
+                                <span class="font-bold text-gray-700">ตลาดนัด</span>
+                            </div>
+                            <div onclick="grabSelectDest('clinic', 'คลินิก')"
+                                class="grab-dest-card flex flex-col items-center p-4 border-2 border-gray-100 rounded-2xl cursor-pointer hover:border-sky-400 hover:bg-sky-50 transition-all"
+                                data-val="clinic">
+                                <span class="text-3xl mb-1">🏥</span>
+                                <span class="font-bold text-gray-700">คลินิก</span>
+                            </div>
+                            <div onclick="grabSelectDest('park', 'สวนสาธารณะ')"
+                                class="grab-dest-card flex flex-col items-center p-4 border-2 border-gray-100 rounded-2xl cursor-pointer hover:border-sky-400 hover:bg-sky-50 transition-all"
+                                data-val="park">
+                                <span class="text-3xl mb-1">🌳</span>
+                                <span class="font-bold text-gray-700">สวนสาธารณะ</span>
+                            </div>
+                        </div>
+
+                        <hr class="border-gray-100 mb-4">
+
+                        <!-- Step 2: Time & Passengers -->
+                        <h3 class="font-bold text-gray-600 text-sm mb-3 uppercase tracking-wide">⏰ เวลาเดินทาง</h3>
+                        <div class="flex gap-2 mb-4">
+                            <button onclick="grabSelectTime('now')" id="grab-btn-now"
+                                class="flex-1 py-3 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-700 font-bold text-sm transition-all">
+                                <i class="fas fa-bolt mr-1"></i> ด่วน (ตอนนี้)
+                            </button>
+                            <button onclick="grabSelectTime('later')" id="grab-btn-later"
+                                class="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-bold text-sm transition-all">
+                                <i class="fas fa-clock mr-1"></i> จองล่วงหน้า
+                            </button>
+                        </div>
+                        <div id="grab-time-picker" class="hidden mb-4">
+                            <input type="time" id="grab-scheduled-time"
+                                class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-sky-400 outline-none text-lg text-center">
+                        </div>
+
+                        <h3 class="font-bold text-gray-600 text-sm mb-3 uppercase tracking-wide">👥 จำนวนผู้โดยสาร</h3>
+                        <div class="flex items-center justify-center gap-6 bg-gray-50 p-3 rounded-2xl mb-5">
+                            <button onclick="grabAdjustPassenger(-1)"
+                                class="w-10 h-10 bg-white shadow-md rounded-full font-bold text-xl text-sky-600">−</button>
+                            <span id="grab-passenger-count" class="text-2xl font-bold text-gray-800 w-6 text-center">1</span>
+                            <button onclick="grabAdjustPassenger(1)"
+                                class="w-10 h-10 bg-white shadow-md rounded-full font-bold text-xl text-sky-600">+</button>
+                        </div>
+
+                        <!-- Confirm Button -->
+                        <button onclick="grabSubmitBooking()" id="grab-confirm-btn"
+                            class="w-full bg-gray-300 text-gray-500 p-5 rounded-2xl font-bold text-xl shadow-sm cursor-not-allowed transition-all" disabled>
+                            <i class="fas fa-car mr-2"></i> เรียกรถ
+                        </button>
+                        <p id="grab-dest-hint" class="text-center text-xs text-gray-400 mt-2">กรุณาเลือกปลายทางก่อน</p>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Booking Wizard (hidden — เก็บไว้สำรอง) -->
+            <div id="page-booking" class="hidden"></div>
 
             <!-- 4. Activity -->
             <div id="page-activity" class="hidden p-4 md:p-8 max-w-5xl mx-auto pb-24">
@@ -233,6 +334,106 @@
                 <div id="activityList" class="space-y-4"></div>
             </div>
 
+            <!-- 6. Admin Dashboard -->
+            <div id="page-admin" class="hidden p-4 md:p-8 max-w-6xl mx-auto pb-24">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <h2 class="text-3xl font-bold text-purple-800">จัดการระบบแอดมิน</h2>
+                    <div class="flex bg-white p-1 rounded-xl shadow-sm border flex-wrap gap-1">
+                        <button onclick="switchAdminTab('users')" id="tab-users" class="px-4 py-2 rounded-lg font-bold bg-purple-600 text-white text-sm">สมาชิก</button>
+                        <button onclick="switchAdminTab('bookings')" id="tab-bookings" class="px-4 py-2 rounded-lg font-bold text-gray-500 text-sm">การจองรถ</button>
+                        <button onclick="switchAdminTab('activities')" id="tab-activities" class="px-4 py-2 rounded-lg font-bold text-gray-500 text-sm">จัดการกิจกรรม</button>
+                        <button onclick="switchAdminTab('incidents')" id="tab-incidents" class="px-4 py-2 rounded-lg font-bold text-gray-500 text-sm">🆘 เหตุฉุกเฉิน</button>
+                    </div>
+                </div>
+
+                <!-- Admin Tab: Users -->
+                <div id="admin-users" class="space-y-4">
+                    <div class="flex gap-4 mb-4">
+                        <div class="relative flex-1">
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                            <input type="text" id="search-users" placeholder="ค้นหาชื่อผู้ใช้ หรือ ID..." class="w-full pl-12 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-purple-500 outline-none" onkeyup="filterAdminUsers()">
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-sm overflow-hidden border">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-50 border-b">
+                                <tr>
+                                    <th class="p-4 font-bold text-gray-600">ID / ชื่อ</th>
+                                    <th class="p-4 font-bold text-gray-600">Username</th>
+                                    <th class="p-4 font-bold text-gray-600">Role</th>
+                                    <th class="p-4 font-bold text-gray-600">วันที่สมัคร</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminUserList"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Admin Tab: Bookings -->
+                <div id="admin-bookings" class="hidden space-y-4">
+                    <div class="flex gap-4 mb-4">
+                        <select id="filter-booking-status" class="w-full md:w-1/3 p-3 border rounded-xl focus:ring-2 focus:ring-purple-500 outline-none" onchange="filterAdminBookings()">
+                            <option value="all">สถานะทั้งหมด</option>
+                            <option value="pending">⏳ รอดำเนินการ</option>
+                            <option value="approved">✅ อนุมัติแล้ว</option>
+                            <option value="completed">🏁 เสร็จสิ้น</option>
+                            <option value="rejected">❌ ปฏิเสธ/ยกเลิก</option>
+                        </select>
+                    </div>
+                    <div id="adminBookingList" class="grid gap-4"></div>
+                </div>
+
+                <!-- Admin Tab: Activities -->
+                <div id="admin-activities" class="hidden">
+                    <!-- รายการกิจกรรมที่มีอยู่ -->
+                    <div class="mb-6">
+                        <h3 class="text-xl font-bold text-gray-700 mb-3"><i class="fas fa-list mr-2 text-purple-500"></i>กิจกรรมทั้งหมดในระบบ</h3>
+                        <div id="adminActivityList" class="space-y-2"></div>
+                    </div>
+                    <!-- ฟอร์มสร้างกิจกรรมใหม่ -->
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border max-w-2xl">
+                        <h3 class="text-2xl font-bold mb-6 text-purple-700"><i class="fas fa-plus-circle mr-2"></i>สร้างกิจกรรมใหม่</h3>
+                        <form id="createActivityForm" onsubmit="handleCreateActivity(event)" class="space-y-4">
+                            <div>
+                                <label class="block font-bold mb-1">ชื่อกิจกรรม</label>
+                                <input type="text" id="act-name" class="w-full p-3 border rounded-xl" required placeholder="เช่น รำไทเก็ก ยามเช้า">
+                            </div>
+                            <div>
+                                <label class="block font-bold mb-1">รายละเอียดกิจกรรม</label>
+                                <textarea id="act-description" class="w-full p-3 border rounded-xl" rows="2" placeholder="อธิบายเกี่ยวกับกิจกรรมนี้..."></textarea>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block font-bold mb-1">วันที่และเวลา</label>
+                                    <input type="datetime-local" id="act-date" class="w-full p-3 border rounded-xl" required>
+                                </div>
+                                <div>
+                                    <label class="block font-bold mb-1">จำนวนที่รับ (คน)</label>
+                                    <input type="number" id="act-seats" class="w-full p-3 border rounded-xl" value="20">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block font-bold mb-1">สถานที่</label>
+                                <input type="text" id="act-location" class="w-full p-3 border rounded-xl" value="สโมสรกลาง">
+                            </div>
+                            <div>
+                                <label class="block font-bold mb-1">ไอคอน (Emoji)</label>
+                                <input type="text" id="act-icon" class="w-full p-3 border rounded-xl" value="🧘‍♂️">
+                            </div>
+                            <button type="submit" class="w-full bg-purple-600 text-white p-4 rounded-xl font-bold text-lg shadow-lg hover:bg-purple-700 mt-4 transition-all">สร้างกิจกรรมทันที</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Admin Tab: Incidents -->
+                <div id="admin-incidents" class="hidden">
+                    <div class="flex items-center gap-3 mb-4">
+                        <h3 class="text-xl font-bold text-red-700"><i class="fas fa-exclamation-triangle mr-2"></i>ประวัติเหตุฉุกเฉิน</h3>
+                    </div>
+                    <div id="adminIncidentList" class="space-y-2"></div>
+                </div>
+            </div>
+
             <!-- 5. Schedule -->
             <div id="page-schedule" class="hidden p-4 md:p-8 max-w-5xl mx-auto pb-24">
                 <div class="flex items-center gap-4 mb-6">
@@ -240,7 +441,43 @@
                             class="fas fa-arrow-left"></i></button>
                     <h2 class="text-3xl font-bold text-gray-800">ตารางของฉัน</h2>
                 </div>
-                <div id="myScheduleList" class="space-y-4"></div>
+
+                <!-- Calendar Card -->
+                <div class="bg-white rounded-3xl shadow-lg border overflow-hidden mb-6">
+                    <!-- Month Navigator -->
+                    <div class="flex items-center justify-between px-6 py-4 bg-sky-600 text-white">
+                        <button id="cal-prev" onclick="calNavigate(-1)"
+                            class="w-10 h-10 rounded-full bg-sky-500 hover:bg-sky-400 flex items-center justify-center transition-colors">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <h3 id="cal-month-label" class="text-xl font-bold"></h3>
+                        <button id="cal-next" onclick="calNavigate(1)"
+                            class="w-10 h-10 rounded-full bg-sky-500 hover:bg-sky-400 flex items-center justify-center transition-colors">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Day Headers -->
+                    <div class="grid grid-cols-7 text-center text-sm font-bold py-2 border-b bg-gray-50">
+                        <div class="text-red-500">อา</div>
+                        <div class="text-gray-600">จ</div>
+                        <div class="text-gray-600">อ</div>
+                        <div class="text-gray-600">พ</div>
+                        <div class="text-gray-600">พฤ</div>
+                        <div class="text-gray-600">ศ</div>
+                        <div class="text-blue-500">ส</div>
+                    </div>
+
+                    <!-- Calendar Grid -->
+                    <div id="cal-grid" class="grid grid-cols-7 gap-0"></div>
+                </div>
+
+                <!-- Selected Day Events -->
+                <div id="cal-selected-label" class="text-lg font-bold text-gray-700 mb-3 hidden">
+                    <i class="fas fa-calendar-day text-sky-500 mr-2"></i>
+                    <span id="cal-selected-date-text"></span>
+                </div>
+                <div id="myScheduleList" class="space-y-3"></div>
             </div>
 
             <!-- Mobile SOS -->

@@ -149,6 +149,49 @@ class RealFacebookAuthAdapter {
     }
 }
 
+class RealLineAuthAdapter {
+    constructor() {
+        // *** ใส่ LIFF ID ของ LINE ตรงนี้ ***
+        // ตัวอย่าง: '1651234567-abcde123'
+        this.liffId = '2009888505-x7ShyMIu';
+        this.scriptUrl = 'https://static.line-scdn.net/liff/edge/2/sdk.js';
+    }
+
+    async login() {
+        // 1. โหลด LIFF SDK
+        if (!window.liff) {
+            await loadScript(this.scriptUrl);
+        }
+
+        return new Promise((resolve, reject) => {
+            // 2. Init LIFF
+            window.liff.init({ liffId: this.liffId })
+                .then(() => {
+                    if (!window.liff.isLoggedIn()) {
+                        // 3. ถ้ายังไม่ได้ล็อกอิน ให้เด้งไปหน้าล็อกอินของ LINE (Redirect)
+                        window.liff.login();
+                    } else {
+                        // 4. ถ้าล็อกอินแล้ว ดึงข้อมูล User Profile
+                        window.liff.getProfile()
+                            .then(profile => {
+                                resolve({
+                                    id: profile.userId,
+                                    name: profile.displayName,
+                                    role: 'user',
+                                    provider: 'Line (Real)'
+                                });
+                            })
+                            .catch((err) => reject(err));
+                    }
+                })
+                .catch((err) => {
+                    console.error("LIFF Init Error:", err);
+                    reject("ไม่สามารถเชื่อมต่อ LINE LIFF ได้ กรุณาตรวจสอบ LIFF ID (ต้องใส่ YOUR_LIFF_ID_HERE ให้ถูกต้อง)");
+                });
+        });
+    }
+}
+
 // --- 2.2 Mock Adapters (สำหรับคนที่ยังไม่มี Key) ---
 class MockGoogleAuthAdapter {
     async login() {
@@ -198,7 +241,7 @@ class AuthFactory {
             // return new RealGoogleAuthAdapter(); // <--- เปิดบรรทัดนี้เพื่อใช้ของจริง!
 
             case 'line':
-                return new MockLineAuthAdapter(); // Line ของจริงต้องทำ LIFF หรือ Redirect ยุ่งยาก ใช้ Mock ไปก่อน
+                return new RealLineAuthAdapter();
 
             case 'facebook':
                 return new RealFacebookAuthAdapter();

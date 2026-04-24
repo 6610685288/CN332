@@ -4,30 +4,32 @@ const Activity = require('../models/activity.model');
 
 exports.getMySchedule = async (req, res) => {
     try {
-        const { elderlyId } = req.params;
+        // elderlyId from JWT token
+        const elderlyId = req.user.elderlyId;
 
         // 1️⃣ Get bookings
         const bookings = await Booking.findAll({
-            where: { elderlyId }
+            where: { elderlyId },
+            order: [['scheduledTime', 'ASC']]
         });
 
-        // 2️⃣ Get joined activities
+        // 2️⃣ Get joined activity IDs
         const joins = await ActivityJoin.findAll({
             where: { elderlyId }
         });
 
         const activityIds = joins.map(j => j.activityId);
 
-        const activities = await Activity.findAll({
-            where: { id: activityIds }
-        });
+        // 3️⃣ Fetch activity details (only if there are any joins)
+        const activities = activityIds.length > 0
+            ? await Activity.findAll({ where: { id: activityIds }, order: [['date', 'ASC']] })
+            : [];
 
-        // 3️⃣ Format activities like booking format
         const formattedActivities = activities.map(a => ({
             type: 'activity',
             title: `กิจกรรม: ${a.name}`,
-            detail: `วันที่: ${new Date(a.date).toLocaleDateString()}`,
-            timestamp: a.createdAt,
+            detail: `วันที่: ${new Date(a.date).toLocaleDateString('th-TH')} | สถานที่: ${a.location}`,
+            timestamp: a.date,
             status: 'joined'
         }));
 
@@ -39,12 +41,15 @@ exports.getMySchedule = async (req, res) => {
             status: b.status
         }));
 
-        const combined = [...formattedBookings, ...formattedActivities];
+        // Combine and sort by timestamp
+        const combined = [...formattedBookings, ...formattedActivities].sort(
+            (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+        );
 
         res.json(combined);
 
     } catch (error) {
-        console.error(error);
+        console.error('GET SCHEDULE ERROR:', error);
         res.status(500).json({ message: 'Error loading schedule' });
     }
 };

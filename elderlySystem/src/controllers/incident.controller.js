@@ -3,24 +3,26 @@ const { sendEmail } = require("../services/email.service");
 
 exports.createIncident = async (req, res) => {
     try {
-        const { sensorId, elderlyId, location, type } = req.body;
+        const { sensorId, location, type } = req.body;
+        // elderlyId มาจาก JWT token (ปลอดภัยกว่า body)
+        const elderlyId = req.user ? req.user.elderlyId : req.body.elderlyId;
 
         const newIncident = await Incident.create({
-            sensorId,
+            sensorId: sensorId || 'SOS_MANUAL',
             elderlyId,
-            location,
-            type
+            location: location || 'ไม่ระบุ',
+            type: type || 'sos'
         });
 
-        if (type === "fall") {
+        if (type === "fall" || type === "sos") {
             await sendEmail(
                 "oungzazahaha@gmail.com",
-                "🚨 Fall Detected Alert",
-                `Fall detected!
+                type === 'sos' ? '🆘 SOS แจ้งเหตุฉุกเฉิน' : "🚨 Fall Detected Alert",
+                `${type === 'sos' ? 'ผู้สูงอายุกดปุ่ม SOS!' : 'Fall detected!'}
 
-Sensor ID: ${sensorId}
+Sensor ID: ${sensorId || 'SOS_MANUAL'}
 Elderly ID: ${elderlyId}
-Location: ${location}
+Location: ${location || 'ไม่ระบุ'}
 Type: ${type}
 
 Please check immediately.`
@@ -32,5 +34,17 @@ Please check immediately.`
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error creating incident" });
+    }
+};
+
+exports.getAllIncidents = async (req, res) => {
+    try {
+        const incidents = await Incident.findAll({
+            order: [['createdAt', 'DESC']]
+        });
+        res.json(incidents);
+    } catch (error) {
+        console.error('GET ALL INCIDENTS ERROR:', error);
+        res.status(500).json({ message: 'Error fetching incidents' });
     }
 };
