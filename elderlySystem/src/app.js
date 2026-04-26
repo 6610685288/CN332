@@ -56,7 +56,7 @@ const PORT = process.env.PORT || 5000;
         await sequelize.authenticate();
         console.log('Database connection established successfully.');
 
-        await sequelize.sync();
+        await sequelize.sync({ alter: true });
         console.log('Database synchronized');
 
         app.listen(PORT, () => {
