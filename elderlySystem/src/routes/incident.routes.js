@@ -1,8 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const incidentController = require('../controllers/incident.controller');
+const authMiddleware = require('../middleware/auth.middleware');
+const roleCheck = require('../middleware/role.middleware');
 
-// Define your routes
-router.post('/create', incidentController.createIncident);  // Example endpoint
+// Incident reporting requires authentication
+router.post('/create', authMiddleware, incidentController.createIncident);
+
+// Admin: view all incidents
+router.get('/all', authMiddleware, roleCheck(['admin', 'staff']), incidentController.getAllIncidents);
 
 module.exports = router;

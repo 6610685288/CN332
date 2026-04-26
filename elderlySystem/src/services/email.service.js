@@ -8,20 +8,33 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+/**
+ * Send an email.
+ * @returns {Promise<boolean>} true if sent, false if failed
+ */
 const sendEmail = async (to, subject, text) => {
+    // Guard: skip silently if email credentials are not configured
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS ||
+        process.env.EMAIL_PASS === 'your_gmail_app_password_here') {
+        console.warn(`[EMAIL] Skipped sending to ${to}: EMAIL credentials not configured`);
+        return false;
+    }
+
     try {
         const mailOptions = {
-            from: process.env.EMAIL_USER,
+            from: `"Elderly System Alert" <${process.env.EMAIL_USER}>`,
             to: to,
             subject: subject,
             text: text
         };
 
         const info = await transporter.sendMail(mailOptions);
-        console.log("Email sent:", info.response);
+        console.log(`[EMAIL] Sent to ${to}:`, info.response);
+        return true;
 
     } catch (error) {
-        console.error("Email error:", error);
+        console.error(`[EMAIL] Failed to send to ${to}:`, error.message);
+        return false;
     }
 };
 

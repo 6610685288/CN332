@@ -1,11 +1,14 @@
 const express = require('express');
 const router = express.Router();
-
-// Import your auth controller
 const authController = require('../controllers/auth.controller');
+const authMiddleware = require('../middleware/auth.middleware');
 
-// Define your route handlers
-router.post('/login', authController.login);  // Make sure authController.login exists
-router.post('/register', authController.register);  // If you're using a register route, too
+// Public routes
+router.post('/login', authController.login);
+router.post('/register', authController.register);
+router.post('/social-login', authController.socialLogin);
+
+// Protected route - get current user info
+router.get('/me', authMiddleware, authController.getMe);
 
 module.exports = router;

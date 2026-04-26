@@ -12,6 +12,18 @@ const Activity = sequelize.define('Activity', {
     date: {
         type: DataTypes.DATE,
         allowNull: false
+    },
+    maxSeats: {
+        type: DataTypes.INTEGER,
+        defaultValue: 20
+    },
+    location: {
+        type: DataTypes.STRING,
+        defaultValue: 'สโมสร'
+    },
+    icon: {
+        type: DataTypes.STRING,
+        defaultValue: '🧘‍♂️'
     }
 });
 
