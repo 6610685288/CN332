@@ -219,3 +219,27 @@ exports.deleteActivity = async (req, res) => {
         res.status(500).json({ message: 'Error deleting activity' });
     }
 };
+
+// 8️⃣ Get activity participants (admin/staff only)
+exports.getActivityParticipants = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const User = require('../models/user.model');
+
+        const joins = await ActivityJoin.findAll({
+            where: { activityId: id }
+        });
+
+        // Fetch user details for each joined elderlyId
+        const elderlyIds = joins.map(j => j.elderlyId);
+        const participants = await User.findAll({
+            where: { elderlyId: elderlyIds },
+            attributes: ['elderlyId', 'username', 'name', 'role']
+        });
+
+        res.json(participants);
+    } catch (error) {
+        console.error('GET PARTICIPANTS ERROR:', error);
+        res.status(500).json({ message: 'Error fetching participants' });
+    }
+};

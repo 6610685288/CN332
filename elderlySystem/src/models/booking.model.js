@@ -6,6 +6,10 @@ const Booking = sequelize.define('Booking', {
         type: DataTypes.STRING,
         allowNull: false
     },
+    vehicleType: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     destination: {
         type: DataTypes.STRING,
         allowNull: false

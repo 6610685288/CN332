@@ -27,6 +27,27 @@ Type: ${type}
 
 Please check immediately.`
             );
+            
+            // Notify Admins and Staff inside the system
+            try {
+                const { Op } = require('sequelize');
+                const User = require('../models/user.model');
+                const Notification = require('../models/notification.model');
+                
+                const adminUsers = await User.findAll({
+                    where: {
+                        role: { [Op.in]: ['admin', 'staff'] }
+                    }
+                });
+                const notifications = adminUsers.map(admin => ({
+                    elderlyId: admin.elderlyId,
+                    title: type === 'sos' ? '🆘 ผู้ใช้งานกดปุ่มฉุกเฉิน!' : '🚨 ตรวจพบการล้ม!',
+                    message: `ผู้ใช้ ${elderlyId} ต้องการความช่วยเหลือด่วน\nสถานที่: ${location || 'ไม่ระบุ'}`
+                }));
+                await Notification.bulkCreate(notifications);
+            } catch (e) {
+                console.error('Failed to notify admin via system:', e);
+            }
         }
 
         res.status(201).json(newIncident);

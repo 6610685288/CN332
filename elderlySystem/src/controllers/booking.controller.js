@@ -1,5 +1,6 @@
 const Booking = require('../models/booking.model');
 const User = require('../models/user.model');
+const Notification = require('../models/notification.model');
 
 // POST /api/booking/create
 exports.createBooking = async (req, res) => {
@@ -7,6 +8,7 @@ exports.createBooking = async (req, res) => {
         const {
             destination,
             scheduledTime,
+            vehicleType,
             passengers,
             wheelchair,
             helper
@@ -78,14 +80,36 @@ exports.createBooking = async (req, res) => {
 
         const newBooking = await Booking.create({
             elderlyId,
-            destination: destination.trim(),
+            destination,
             scheduledTime,
+            vehicleType: vehicleType || 'ไม่ระบุ',
             passengers: passengers || 1,
-            wheelchair: wheelchair || false,
-            helper: helper || false
+            wheelchair: !!wheelchair,
+            helper: !!helper,
+            status: 'pending'
         });
+        
+        // Notify Admins and Staff
+        try {
+            const adminUsers = await User.findAll({
+                where: {
+                    role: { [Op.in]: ['admin', 'staff'] }
+                }
+            });
+            const notifications = adminUsers.map(admin => ({
+                elderlyId: admin.elderlyId,
+                title: '🛎️ มีคำขอเรียกรถใหม่',
+                message: `ผู้ใช้ ${elderlyId} เรียกรถไปยัง ${destination} (เวลา: ${scheduledTime})`
+            }));
+            await Notification.bulkCreate(notifications);
+        } catch (e) {
+            console.error('Failed to notify admin:', e);
+        }
 
-        res.status(201).json(newBooking);
+        res.status(201).json({
+            message: 'Booking created successfully',
+            booking: newBooking
+        });
 
     } catch (error) {
         console.error('CREATE BOOKING ERROR:', error);
@@ -155,6 +179,20 @@ exports.updateBookingStatus = async (req, res) => {
 
         booking.status = status;
         await booking.save();
+
+        if (status === 'rejected') {
+            await Notification.create({
+                elderlyId: booking.elderlyId,
+                title: 'การจองรถถูกปฏิเสธ',
+                message: `การจองรถไปยัง ${booking.destination} วันที่ ${booking.scheduledTime === 'now' ? 'ด่วน (ตอนนี้)' : new Date(booking.scheduledTime).toLocaleString('th-TH')} ไม่ได้รับการอนุมัติ กรุณาติดต่อเจ้าหน้าที่`
+            });
+        } else if (status === 'approved') {
+            await Notification.create({
+                elderlyId: booking.elderlyId,
+                title: 'การจองรถได้รับการอนุมัติ',
+                message: `การจองรถไปยัง ${booking.destination} วันที่ ${booking.scheduledTime === 'now' ? 'ด่วน (ตอนนี้)' : new Date(booking.scheduledTime).toLocaleString('th-TH')} ได้รับการอนุมัติแล้ว`
+            });
+        }
 
         res.json({ message: `Booking ${status} successfully`, booking });
     } catch (error) {

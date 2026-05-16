@@ -12,6 +12,7 @@ require('./models/user.model');
 require('./models/incident.model');
 require('./models/booking.model');
 require('./models/vehicle.model');
+require('./models/notification.model');
 const Activity = require('./models/activity.model');
 const ActivityJoin = require('./models/activityJoin.model');
 
@@ -27,6 +28,7 @@ const activityRoutes  = require('./routes/activity.routes');
 const scheduleRoutes  = require('./routes/schedule.routes');
 const userRoutes      = require('./routes/user.routes');
 const vehicleRoutes   = require('./routes/vehicle.routes');
+const notificationRoutes = require('./routes/notification.routes');
 
 const app = express();
 
@@ -42,6 +44,7 @@ app.use('/api/activities',activityRoutes);
 app.use('/api/schedule',  scheduleRoutes);
 app.use('/api/users',     userRoutes);
 app.use('/api/vehicles',  vehicleRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Test route (optional but useful)
 app.get('/', (req, res) => {

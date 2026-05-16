@@ -51,6 +51,10 @@ class APIFacade {
         });
     }
 
+    async getActivityParticipants(activityId) {
+        return this._request(`/activities/${activityId}/participants`);
+    }
+
     async getMySchedule() {
         try {
             // 1️⃣ Get bookings (Token will handle identity)
@@ -63,14 +67,20 @@ class APIFacade {
 
             // Format vehicle bookings
             if (bookings) {
-                const bookingItems = bookings.map(b => ({
-                    id: b.id,
-                    type: 'vehicle',
-                    title: `จองรถไป ${b.destination}`,
-                    detail: `เวลา: ${b.scheduledTime} | ผู้โดยสาร: ${b.passengers} คน`,
-                    timestamp: b.createdAt,
-                    status: b.status || 'pending'
-                }));
+                const bookingItems = bookings.map(b => {
+                    let evTime = b.createdAt;
+                    if (b.scheduledTime && b.scheduledTime !== 'now') {
+                        evTime = b.scheduledTime;
+                    }
+                    return {
+                        id: b.id,
+                        type: 'vehicle',
+                        title: `จอง${b.vehicleType || 'รถ'}ไป ${b.destination}`,
+                        detail: `เวลา: ${b.scheduledTime === 'now' ? 'ตอนนี้' : new Date(b.scheduledTime).toLocaleString('th-TH')} | ผู้โดยสาร: ${b.passengers} คน`,
+                        timestamp: evTime,
+                        status: b.status || 'pending'
+                    };
+                });
 
                 scheduleItems = scheduleItems.concat(bookingItems);
             }
@@ -108,6 +118,19 @@ class APIFacade {
         }
     }
 
+    // --- Notifications ---
+    async getMyNotifications() {
+        return this._request('/notifications/my');
+    }
+
+    async markNotificationRead(notificationId) {
+        return this._request(`/notifications/${notificationId}/read`, 'PATCH');
+    }
+
+    async markAllNotificationsRead() {
+        return this._request(`/notifications/read-all`, 'PATCH');
+    }
+
     // --- Admin Methods ---
     async getAllUsers() {
         return this._request('/users/all');
@@ -127,6 +150,10 @@ class APIFacade {
 
     async updateMyProfile(userData) {
         return this._request('/users/me', 'PATCH', userData);
+    }
+
+    async sendNotification(data) {
+        return this._request('/notifications/send', 'POST', data);
     }
 
 

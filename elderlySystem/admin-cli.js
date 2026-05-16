@@ -12,6 +12,7 @@ require('./src/models/incident.model');
 require('./src/models/vehicle.model');
 const Activity = require('./src/models/activity.model');
 const ActivityJoin = require('./src/models/activityJoin.model');
+const Notification = require('./src/models/notification.model');
 ActivityJoin.belongsTo(Activity, { foreignKey: 'activityId' });
 Activity.hasMany(ActivityJoin, { foreignKey: 'activityId' });
 
@@ -150,6 +151,77 @@ const changeBookingStatus = async () => {
     await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue...' }]);
 };
 
+const sendNotificationMenu = async () => {
+    const { target } = await inquirer.prompt([
+        {
+            type: 'list',
+            name: 'target',
+            message: 'Who do you want to send a notification to?',
+            choices: [
+                { name: 'All Users in System (Every Role)', value: 'all' },
+                { name: 'All Elderly Users', value: 'role:elderly' },
+                { name: 'All Staff Users', value: 'role:staff' },
+                { name: 'All Admin Users', value: 'role:admin' },
+                { name: 'Specific User', value: 'specific' }
+            ]
+        }
+    ]);
+
+    let elderlyId = 'all';
+    if (target === 'specific') {
+        const users = await User.findAll({ where: { role: 'elderly' }, order: [['id', 'ASC']] });
+        if (users.length === 0) {
+            console.log(chalk.red('No elderly users found!'));
+            await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue...' }]);
+            return;
+        }
+
+        const answer = await inquirer.prompt([
+            {
+                type: 'list',
+                name: 'selectedUser',
+                message: 'Select user:',
+                choices: users.map(u => ({
+                    name: `[${u.elderlyId}] ${u.name || u.username}`,
+                    value: u.elderlyId
+                }))
+            }
+        ]);
+        elderlyId = answer.selectedUser;
+    }
+
+    const { title, message } = await inquirer.prompt([
+        { type: 'input', name: 'title', message: 'Notification Title:', validate: input => input ? true : 'Required' },
+        { type: 'input', name: 'message', message: 'Notification Message:', validate: input => input ? true : 'Required' }
+    ]);
+
+    if (elderlyId === 'all') {
+        const users = await User.findAll();
+        const notifications = users.map(u => ({
+            elderlyId: u.elderlyId,
+            title,
+            message
+        }));
+        await Notification.bulkCreate(notifications);
+        console.log(chalk.green.bold(`\n✅ Notification sent to all ${users.length} users successfully!\n`));
+    } else if (elderlyId.startsWith('role:')) {
+        const role = elderlyId.split(':')[1];
+        const users = await User.findAll({ where: { role } });
+        const notifications = users.map(u => ({
+            elderlyId: u.elderlyId,
+            title,
+            message
+        }));
+        await Notification.bulkCreate(notifications);
+        console.log(chalk.green.bold(`\n✅ Notification sent to ${users.length} ${role}s successfully!\n`));
+    } else {
+        await Notification.create({ elderlyId, title, message });
+        console.log(chalk.green.bold(`\n✅ Notification sent successfully to ${elderlyId}!\n`));
+    }
+
+    await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue...' }]);
+};
+
 const mainMenu = async () => {
     let exit = false;
     while (!exit) {
@@ -164,6 +236,7 @@ const mainMenu = async () => {
                     '🔑 Change User Role',
                     '📅 View All Bookings',
                     '✏️  Change Booking Status',
+                    '📨 Send Notification',
                     new inquirer.Separator(),
                     '🚪 Exit'
                 ]
@@ -182,6 +255,9 @@ const mainMenu = async () => {
                 break;
             case '✏️  Change Booking Status':
                 await changeBookingStatus();
+                break;
+            case '📨 Send Notification':
+                await sendNotificationMenu();
                 break;
             case '🚪 Exit':
                 exit = true;

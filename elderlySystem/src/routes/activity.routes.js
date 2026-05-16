@@ -18,5 +18,6 @@ router.post('/', authMiddleware, roleCheck(['admin', 'staff']), activityControll
 // Update / Delete activity (admin/staff only)
 router.put('/:id', authMiddleware, roleCheck(['admin', 'staff']), activityController.updateActivity);
 router.delete('/:id', authMiddleware, roleCheck(['admin', 'staff']), activityController.deleteActivity);
+router.get('/:id/participants', authMiddleware, roleCheck(['admin', 'staff']), activityController.getActivityParticipants);
 
 module.exports = router;

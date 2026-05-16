@@ -26,6 +26,7 @@ let calState = {
 
 // Grab/shuttle state
 let grabState = {
+    vehicleType: '',
     destination: '',
     destinationName: '',
     timeType: 'now',
@@ -39,6 +40,7 @@ let allAdminBookings = [];
 // --- Initial Setup ---
 function initWizard() {
     const container = document.getElementById('wizard-indicators');
+    if (!container) return;
     container.innerHTML = `
         <div class="flex flex-col items-center step-indicator" id="step-1-ind"><div class="w-10 h-10 rounded-full border-2 flex items-center justify-center font-bold mb-1 step-active">1</div><span class="text-sm">ปลายทาง</span></div>
         <div class="h-1 flex-1 bg-gray-200 mx-2 relative top-[-10px]"></div>
@@ -90,7 +92,43 @@ async function handleLogin(provider) {
         localStorage.setItem("currentUser", JSON.stringify(authData.user));
         localStorage.setItem("token", authData.token); // สำคัญมาก!
 
-        checkAdminAccess(); // เช็คสิทธิ์ Admin ทันที
+        checkAdminAccess();
+        
+        // โหลดข้อมูลแจ้งเตือนทันทีที่ล็อกอินเสร็จ
+        loadNotifications();
+        
+        // Setup Notification Admin Tab Target Select
+        if (state.currentUser?.role === 'admin' || state.currentUser?.role === 'staff') {
+            try {
+                const users = await apiService.getAllUsers();
+                const targetSelect = document.getElementById('notif-target');
+                if (targetSelect) {
+                    targetSelect.innerHTML = `
+                        <option value="all">ส่งถึงทุกคนในระบบ (ทุก Role)</option>
+                        <option value="role:elderly">ส่งเฉพาะลูกบ้าน (Elderly)</option>
+                        <option value="role:staff">ส่งเฉพาะพนักงาน (Staff)</option>
+                        <option value="role:admin">ส่งเฉพาะแอดมิน (Admin)</option>
+                        <optgroup label="ลูกบ้าน (Elderly)">
+                    `;
+                    users.filter(u => u.role === 'elderly').forEach(u => {
+                        const opt = document.createElement('option');
+                        opt.value = u.elderlyId;
+                        opt.textContent = `[${u.elderlyId}] ${u.name || u.username}`;
+                        targetSelect.appendChild(opt);
+                    });
+                    
+                    const groupOthers = document.createElement('optgroup');
+                    groupOthers.label = "พนักงาน / แอดมิน";
+                    users.filter(u => u.role !== 'elderly').forEach(u => {
+                        const opt = document.createElement('option');
+                        opt.value = u.elderlyId;
+                        opt.textContent = `[${u.elderlyId}] ${u.name || u.username} (${u.role})`;
+                        groupOthers.appendChild(opt);
+                    });
+                    targetSelect.appendChild(groupOthers);
+                }
+            } catch(e) {}
+        }
 
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('app').classList.remove('hidden');
@@ -113,11 +151,127 @@ async function handleLogin(provider) {
     }
 }
 
-// ... (ส่วนที่เหลือของไฟล์เหมือนเดิม ไม่ต้องแก้) ...
+// --- Notifications ---
+let lastUnreadCount = -1;
+
+async function loadNotifications() {
+    try {
+        const notifs = await apiService.getMyNotifications();
+        
+        // Update badge
+        const unreadCount = notifs.filter(n => !n.isRead).length;
+        
+        if (lastUnreadCount !== -1 && unreadCount > lastUnreadCount) {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'info',
+                title: 'มีจดหมายแจ้งเตือนใหม่!',
+                showConfirmButton: false,
+                timer: 4000
+            });
+        }
+        lastUnreadCount = unreadCount;
+        const badges = [
+            document.getElementById('notif-badge-desktop'),
+            document.getElementById('notif-badge-mobile'),
+            document.getElementById('notif-badge-home'),
+            document.getElementById('notif-badge-admin-desktop'),
+            document.getElementById('notif-badge-admin-mobile')
+        ];
+        
+        badges.forEach(b => {
+            if (b) {
+                if (unreadCount > 0) {
+                    b.textContent = unreadCount;
+                    b.classList.remove('hidden');
+                } else {
+                    b.classList.add('hidden');
+                }
+            }
+        });
+
+        const list = document.getElementById('notificationList');
+        if (!list) return;
+
+        if (!Array.isArray(notifs)) {
+            throw new Error('API return format is invalid');
+        }
+
+        if (notifs.length === 0) {
+            list.innerHTML = `<div class="text-center text-gray-400 py-10"><i class="fas fa-inbox text-4xl mb-3 block"></i>ไม่มีข้อความแจ้งเตือน</div>`;
+            return;
+        }
+
+        list.innerHTML = notifs.map(n => `
+            <div onclick="readNotification(${n.id}, '${(n.title || '').replace(/'/g, "\\'")}', '${(n.message || '').replace(/\n/g, '<br>').replace(/'/g, "\\'")}', ${n.isRead})" class="bg-white p-5 rounded-2xl shadow-sm border-l-4 ${n.isRead ? 'border-gray-300 opacity-70' : 'border-purple-500'} cursor-pointer hover:bg-gray-50 transition-all flex items-start gap-4">
+                <div class="mt-1 ${n.isRead ? 'text-gray-400' : 'text-purple-600'}">
+                    <i class="fas ${n.isRead ? 'fa-envelope-open' : 'fa-envelope'} text-2xl"></i>
+                </div>
+                <div class="flex-1">
+                    <div class="flex justify-between items-start">
+                        <h4 class="font-bold text-lg ${n.isRead ? 'text-gray-600' : 'text-gray-800'}">${n.title || 'ไม่มีหัวข้อ'}</h4>
+                        <span class="text-xs text-gray-400">${n.createdAt ? new Date(n.createdAt).toLocaleString('th-TH') : ''}</span>
+                    </div>
+                    <p class="text-gray-600 mt-1 line-clamp-2">${n.message || ''}</p>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (err) {
+        console.error('loadNotifications Error:', err);
+        const list = document.getElementById('notificationList');
+        if (list) {
+            list.innerHTML = `<div class="text-center text-red-500 py-10"><i class="fas fa-exclamation-triangle text-4xl mb-3 block"></i>เกิดข้อผิดพลาดในการโหลดข้อความ (${err.message})</div>`;
+        }
+    }
+}
+
+async function readNotification(id, title, message, isRead) {
+    Swal.fire({
+        title: title,
+        html: `<div class="text-left text-gray-700 mt-4">${message}</div>`,
+        confirmButtonText: 'ปิด',
+        confirmButtonColor: '#9333ea'
+    });
+
+    if (!isRead) {
+        try {
+            await apiService.markNotificationRead(id);
+            loadNotifications();
+        } catch (err) {
+            console.error(err);
+        }
+    }
+}
+
+async function markAllNotificationsAsRead() {
+    try {
+        Swal.fire({ title: 'กำลังดำเนินการ...', didOpen: () => Swal.showLoading() });
+        await apiService.markAllNotificationsRead();
+        await loadNotifications();
+        Swal.fire({
+            icon: 'success',
+            title: 'สำเร็จ',
+            text: 'อ่านจดหมายทั้งหมดแล้ว',
+            timer: 1500,
+            showConfirmButton: false
+        });
+    } catch (err) {
+        console.error(err);
+        Swal.fire('ผิดพลาด', 'ไม่สามารถดำเนินการได้', 'error');
+    }
+}
+
+setInterval(() => {
+    if (state.currentUser) {
+        loadNotifications();
+    }
+}, 2000); // Poll every 2s
 
 function showPage(pageId) {
     // รายชื่อหน้าทั้งหมดในระบบ (ต้องตรงกับ ID ใน HTML)
-    const pages = ['home', 'profile', 'shuttle', 'booking', 'tracking', 'activity', 'schedule', 'admin'];
+    const pages = ['home', 'profile', 'shuttle', 'booking', 'tracking', 'activity', 'schedule', 'admin', 'notifications'];
     
     pages.forEach(p => {
         const el = document.getElementById(`page-${p}`);
@@ -145,6 +299,7 @@ function showPage(pageId) {
     if (pageId === 'activity') loadActivities();
     if (pageId === 'schedule') loadSchedule();
     if (pageId === 'admin') switchAdminTab('users');
+    if (pageId === 'notifications') loadNotifications();
     
     // ปิดเมนูมือถืออัตโนมัติเมื่อเปลี่ยนหน้า
     const nav = document.getElementById('main-nav');
@@ -216,7 +371,7 @@ async function handleUpdateProfile(event) {
 
 // Admin Tab Logic
 function switchAdminTab(tab) {
-    ['users', 'bookings', 'activities', 'incidents'].forEach(t => {
+    ['users', 'bookings', 'activities', 'incidents', 'notifications'].forEach(t => {
         const contentEl = document.getElementById(`admin-${t}`);
         const tabEl = document.getElementById(`tab-${t}`);
         if (contentEl) contentEl.classList.add('hidden');
@@ -295,8 +450,8 @@ async function loadHomeData() {
     }
 
     if (items.length > 0) {
-        // --- 1. แสดงรายการทั้งหมดใน Preview ---
-        preview.innerHTML = items.map(item => {
+        // --- 1. แสดงรายการแค่อันล่าสุดใน Preview ---
+        preview.innerHTML = items.slice(0, 1).map(item => {
             const icon = item.type === 'vehicle' ? '🚍' : '🤸‍♂️';
             const colorClass = item.type === 'vehicle' ? 'border-sky-500' : 'border-emerald-500';
             return `
@@ -569,6 +724,15 @@ function calSelectDay(dateKey) {
         const isVeh = b.type === 'vehicle';
         const colorClass = isVeh ? 'border-sky-500 bg-sky-50' : 'border-emerald-500 bg-emerald-50';
         const icon = isVeh ? 'fas fa-bus text-sky-600' : 'fas fa-walking text-emerald-600';
+        let statusBadge = '';
+        if (b.status === 'approved' || b.type === 'activity') {
+            statusBadge = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">Approve</span>';
+        } else if (b.status === 'rejected' || b.status === 'cancelled') {
+            statusBadge = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">Reject</span>';
+        } else {
+            statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700">${b.status}</span>`;
+        }
+
         return `
             <div class="bg-white p-5 rounded-2xl shadow-sm border-l-4 ${colorClass} flex justify-between items-center">
                 <div class="flex items-center gap-4">
@@ -581,7 +745,7 @@ function calSelectDay(dateKey) {
                         <p class="text-xs text-gray-400 mt-1">${new Date(b.timestamp).toLocaleString('th-TH')}</p>
                     </div>
                 </div>
-                <span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">${b.status}</span>
+                ${statusBadge}
             </div>
         `;
     }).join('');
@@ -613,9 +777,13 @@ async function handleCancelBooking(bookingId) {
 function loadVehicles() {
     // ใน Grab-style ไม่ต้องโหลด vehicle list แล้ว
     // reset state ทุกครั้งที่เปิดหน้า
-    grabState = { destination: '', destinationName: '', timeType: 'now', scheduledTime: '', passengers: 1 };
+    grabState = { vehicleType: '', destination: '', destinationName: '', timeType: 'now', scheduledTime: '', passengers: 1 };
 
     // reset UI
+    document.querySelectorAll('.grab-veh-card').forEach(c => {
+        c.classList.remove('border-sky-500', 'bg-sky-50');
+        c.classList.add('border-gray-100');
+    });
     document.querySelectorAll('.grab-dest-card').forEach(c => {
         c.classList.remove('border-sky-500', 'bg-sky-50');
         c.classList.add('border-gray-100');
@@ -624,8 +792,36 @@ function loadVehicles() {
     document.getElementById('grab-confirm-btn').disabled = true;
     document.getElementById('grab-confirm-btn').className =
         'w-full bg-gray-300 text-gray-500 p-5 rounded-2xl font-bold text-xl shadow-sm cursor-not-allowed transition-all';
-    document.getElementById('grab-dest-hint').textContent = 'กรุณาเลือกปลายทางก่อน';
+    document.getElementById('grab-dest-hint').textContent = 'กรุณาเลือกรถและปลายทางก่อน';
     grabSelectTime('now');
+
+    const now = new Date();
+    const offset = now.getTimezoneOffset();
+    const minDate = new Date(now.getTime() - (offset*60*1000)).toISOString().slice(0,16);
+    document.getElementById('grab-scheduled-time').min = minDate;
+}
+
+function grabSelectVehicle(val) {
+    grabState.vehicleType = val;
+    document.querySelectorAll('.grab-veh-card').forEach(c => {
+        c.classList.remove('border-sky-500', 'bg-sky-50');
+        c.classList.add('border-gray-100');
+    });
+    const selected = document.querySelector(`.grab-veh-card[data-val="${val}"]`);
+    if (selected) {
+        selected.classList.remove('border-gray-100');
+        selected.classList.add('border-sky-500', 'bg-sky-50');
+    }
+    checkGrabConfirmReady();
+}
+
+function checkGrabConfirmReady() {
+    if (grabState.vehicleType && grabState.destination) {
+        const btn = document.getElementById('grab-confirm-btn');
+        btn.disabled = false;
+        btn.className = 'w-full bg-sky-600 text-white p-5 rounded-2xl font-bold text-xl shadow-lg hover:bg-sky-700 transition-all';
+        document.getElementById('grab-dest-hint').textContent = `รถ: ${grabState.vehicleType} | ปลายทาง: ${grabState.destinationName} ✅`;
+    }
 }
 
 function grabSelectDest(val, name) {
@@ -643,11 +839,7 @@ function grabSelectDest(val, name) {
         selected.classList.add('border-sky-500', 'bg-sky-50');
     }
 
-    // unlock confirm button
-    const btn = document.getElementById('grab-confirm-btn');
-    btn.disabled = false;
-    btn.className = 'w-full bg-sky-600 text-white p-5 rounded-2xl font-bold text-xl shadow-lg hover:bg-sky-700 transition-all';
-    document.getElementById('grab-dest-hint').textContent = `ปลายทาง: ${name} ✅`;
+    checkGrabConfirmReady();
 }
 
 function grabSelectTime(type) {
@@ -676,8 +868,11 @@ function grabAdjustPassenger(delta) {
 }
 
 async function grabSubmitBooking() {
+    if (!grabState.vehicleType) {
+        return Swal.fire('แจ้งเตือน', 'กรุณาเลือกรถที่ต้องการ', 'warning');
+    }
     if (!grabState.destination) {
-        return Swal.fire('แจ้งเตือน', 'กรุณาเลือกปลายทางก่อน', 'warning');
+        return Swal.fire('แจ้งเตือน', 'กรุณาเลือกปลายทาง', 'warning');
     }
 
     const scheduledTime = grabState.timeType === 'now'
@@ -687,13 +882,23 @@ async function grabSubmitBooking() {
     if (grabState.timeType === 'later' && !scheduledTime) {
         return Swal.fire('แจ้งเตือน', 'กรุณาเลือกเวลาที่ต้องการ', 'warning');
     }
+    
+    // Check if time is in the past
+    if (grabState.timeType === 'later') {
+        const selectedDate = new Date(scheduledTime);
+        const now = new Date();
+        if (selectedDate < now) {
+            return Swal.fire('แจ้งเตือน', 'ไม่สามารถเลือกเวลาในอดีตได้', 'warning');
+        }
+    }
 
     const result = await Swal.fire({
         title: `เรียกรถไป ${grabState.destinationName}?`,
         html: `
             <div class="text-left space-y-2 text-base">
+                <div>🚐 <b>ประเภทรถ:</b> ${grabState.vehicleType}</div>
                 <div>📍 <b>ปลายทาง:</b> ${grabState.destinationName}</div>
-                <div>⏰ <b>เวลา:</b> ${scheduledTime === 'now' ? 'ด่วน (ทันที)' : scheduledTime}</div>
+                <div>⏰ <b>เวลา:</b> ${scheduledTime === 'now' ? 'ด่วน (ทันที)' : new Date(scheduledTime).toLocaleString('th-TH')}</div>
                 <div>👥 <b>ผู้โดยสาร:</b> ${grabState.passengers} คน</div>
             </div>`,
         icon: 'question',
@@ -710,6 +915,7 @@ async function grabSubmitBooking() {
 
         await apiService.bookVehicle({
             elderlyId:     state.currentUser.elderlyId,
+            vehicleType:   grabState.vehicleType,
             destination:   grabState.destinationName,
             scheduledTime: scheduledTime,
             passengers:    grabState.passengers,
@@ -967,7 +1173,7 @@ function renderAdminBookings(bookings) {
                     <div class="text-2xl">🚍</div>
                     <div>
                         <p class="font-bold text-gray-800">${b.destination}</p>
-                        <p class="text-sm text-gray-500">ผู้โดยสาร: ${b.passengers} คน | เวลา: ${b.scheduledTime}</p>
+                        <p class="text-sm text-gray-500">รถ: ${b.vehicleType || 'สี่ล้อปกติ'} | ผู้โดยสาร: ${b.passengers} คน | เวลา: ${b.scheduledTime === 'now' ? 'ด่วน (ทันที)' : new Date(b.scheduledTime).toLocaleString('th-TH')}</p>
                         <p class="text-xs text-purple-600 font-bold">ผู้จอง: ${b.displayName || b.elderlyId}</p>
                         <p class="text-[10px] text-gray-300">${new Date(b.createdAt).toLocaleString('th-TH')}</p>
                     </div>
@@ -1052,14 +1258,60 @@ async function loadAdminActivities() {
                         <p class="text-sm text-gray-500">${a.date} | ${a.location} | ${a.joined}/${a.seats} คน</p>
                     </div>
                 </div>
-                <button onclick="handleDeleteActivity(${a.id}, '${a.name.replace(/'/g, "\\'")}')"
-                    class="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-600 text-sm rounded-lg font-bold transition-all">
-                    🗑 ลบ
-                </button>
+                <div class="flex gap-2">
+                    <button onclick="handleViewParticipants(${a.id}, '${a.name.replace(/'/g, "\\'")}')"
+                        class="px-3 py-1 bg-sky-100 hover:bg-sky-200 text-sky-600 text-sm rounded-lg font-bold transition-all">
+                        👥 ดูรายชื่อ
+                    </button>
+                    <button onclick="handleDeleteActivity(${a.id}, '${a.name.replace(/'/g, "\\'")}')"
+                        class="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-600 text-sm rounded-lg font-bold transition-all">
+                        🗑 ลบ
+                    </button>
+                </div>
             </div>
         `).join('');
     } catch (e) {
         list.innerHTML = `<div class="text-center text-red-500 py-4">Error: ${e.message}</div>`;
+    }
+}
+
+async function handleViewParticipants(id, name) {
+    try {
+        Swal.fire({ title: 'กำลังโหลด...', didOpen: () => Swal.showLoading() });
+        const users = await apiService.getActivityParticipants(id);
+        
+        if (!users || users.length === 0) {
+            Swal.fire({
+                icon: 'info',
+                title: 'รายชื่อผู้เข้าร่วม',
+                html: `<b>${name}</b><br><br><span class="text-gray-500">ยังไม่มีผู้เข้าร่วมกิจกรรมนี้</span>`
+            });
+            return;
+        }
+
+        const userHtml = users.map(u => `
+            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl mb-2 text-left">
+                <div class="w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold text-lg">
+                    ${(u.name || u.username).charAt(0)}
+                </div>
+                <div>
+                    <p class="font-bold text-gray-800">${u.name || u.username} ${u.role === 'admin' ? '<span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Admin</span>' : ''}</p>
+                    <p class="text-xs text-gray-500">ID: ${u.elderlyId}</p>
+                </div>
+            </div>
+        `).join('');
+
+        Swal.fire({
+            title: 'ผู้เข้าร่วมกิจกรรม',
+            html: `<div class="text-sm text-gray-500 mb-4">${name} (รวม ${users.length} คน)</div><div class="max-h-64 overflow-y-auto">${userHtml}</div>`,
+            showConfirmButton: true,
+            confirmButtonText: 'ปิดหน้าต่าง',
+            confirmButtonColor: '#9333ea',
+            width: '400px'
+        });
+
+    } catch (err) {
+        Swal.fire('ผิดพลาด', err.message || 'ไม่สามารถโหลดรายชื่อได้', 'error');
     }
 }
 
@@ -1120,6 +1372,25 @@ async function loadAdminIncidents() {
         `).join('');
     } catch (e) {
         list.innerHTML = `<div class="p-8 text-center text-red-500 bg-white rounded-xl">Error: ${e.message}</div>`;
+    }
+}
+
+
+async function handleSendNotification(e) {
+    e.preventDefault();
+    const elderlyId = document.getElementById('notif-target').value;
+    const title = document.getElementById('notif-title').value;
+    const message = document.getElementById('notif-message').value;
+
+    try {
+        Swal.fire({ title: 'กำลังส่ง...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        await apiService.sendNotification({ elderlyId, title, message });
+        
+        Swal.fire('สำเร็จ', 'ส่งจดหมายแจ้งเตือนเรียบร้อยแล้ว', 'success');
+        document.getElementById('notif-title').value = '';
+        document.getElementById('notif-message').value = '';
+    } catch (err) {
+        Swal.fire('ผิดพลาด', err.message || 'ไม่สามารถส่งได้', 'error');
     }
 }
 
