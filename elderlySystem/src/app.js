@@ -13,6 +13,8 @@ require('./models/incident.model');
 require('./models/booking.model');
 require('./models/vehicle.model');
 require('./models/notification.model');
+require('./models/note.model');
+require('./models/announcement.model');
 const Activity = require('./models/activity.model');
 const ActivityJoin = require('./models/activityJoin.model');
 
@@ -29,6 +31,8 @@ const scheduleRoutes  = require('./routes/schedule.routes');
 const userRoutes      = require('./routes/user.routes');
 const vehicleRoutes   = require('./routes/vehicle.routes');
 const notificationRoutes = require('./routes/notification.routes');
+const noteRoutes      = require('./routes/note.routes');
+const announcementRoutes = require('./routes/announcement.routes');
 
 const app = express();
 
@@ -45,6 +49,8 @@ app.use('/api/schedule',  scheduleRoutes);
 app.use('/api/users',     userRoutes);
 app.use('/api/vehicles',  vehicleRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/notes', noteRoutes);
+app.use('/api/announcements', announcementRoutes);
 
 // Test route (optional but useful)
 app.get('/', (req, res) => {

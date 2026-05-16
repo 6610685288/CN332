@@ -105,6 +105,41 @@ class APIFacade {
                 scheduleItems = scheduleItems.concat(activityItems);
             }
 
+            // Note: The backend will now return notes with type: 'note'. 
+            // The frontend getMySchedule doesn't strictly filter them out, but we need to fetch them.
+            // Since backend combined it, we just need to handle the new format directly.
+            // Wait, getMySchedule in api.js currently makes TWO requests and combines them itself!
+            // It calls /booking/my-bookings and /activities/my. 
+            // It does NOT call /schedule!
+            
+            // Let's call /notes/my to get notes, or if the user intends to use the /schedule endpoint,
+            // we should change this to call the new /schedule endpoint?
+            // Actually, wait, let's look at `api.js` closely. It makes two separate requests.
+            // I should fetch notes here as well if they are separate endpoints.
+            // BUT wait, earlier I modified `schedule.controller.js` `getMySchedule`. Is it even being called?
+            // Let's check `api.js`:
+            // `const bookings = await this._request('/booking/my-bookings');`
+            // `const activities = await this._request('/activities/my');`
+            // Let's add a fetch for notes here as well to be safe, because the frontend might not be using the `/schedule` endpoint.
+            
+            try {
+                const notes = await this._request('/notes/my');
+                if (notes) {
+                    const noteItems = notes.map(n => ({
+                        id: n.id,
+                        type: 'note',
+                        title: `โน้ต: ${n.title}`,
+                        detail: n.detail || '',
+                        timestamp: n.scheduledTime,
+                        status: 'note'
+                    }));
+                    scheduleItems = scheduleItems.concat(noteItems);
+                }
+            } catch (e) {
+                // Ignore if notes endpoint doesn't exist yet
+                console.error("Notes error:", e);
+            }
+
             // Sort newest first
             scheduleItems.sort((a, b) =>
                 new Date(b.timestamp) - new Date(a.timestamp)
@@ -185,5 +220,19 @@ class APIFacade {
             type: 'sos',
             location
         });
+    }
+
+    // --- Notes ---
+    async createNote(noteData) {
+        return this._request('/notes', 'POST', noteData);
+    }
+
+    // --- Announcements ---
+    async getAnnouncement() {
+        return this._request('/announcements', 'GET');
+    }
+
+    async updateAnnouncement(message) {
+        return this._request('/announcements', 'POST', { message });
     }
 }

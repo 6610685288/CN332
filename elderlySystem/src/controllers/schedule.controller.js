@@ -1,6 +1,7 @@
 const Booking = require('../models/booking.model');
 const ActivityJoin = require('../models/activityJoin.model');
 const Activity = require('../models/activity.model');
+const Note = require('../models/note.model');
 
 exports.getMySchedule = async (req, res) => {
     try {
@@ -41,8 +42,21 @@ exports.getMySchedule = async (req, res) => {
             status: b.status
         }));
 
+        // 4️⃣ Get notes
+        const notes = await Note.findAll({
+            where: { elderlyId }
+        });
+
+        const formattedNotes = notes.map(n => ({
+            type: 'note',
+            title: `โน้ต: ${n.title}`,
+            detail: n.detail || '',
+            timestamp: n.scheduledTime,
+            status: 'note'
+        }));
+
         // Combine and sort by timestamp
-        const combined = [...formattedBookings, ...formattedActivities].sort(
+        const combined = [...formattedBookings, ...formattedActivities, ...formattedNotes].sort(
             (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
         );
 

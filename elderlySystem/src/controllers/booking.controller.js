@@ -91,6 +91,9 @@ exports.createBooking = async (req, res) => {
         
         // Notify Admins and Staff
         try {
+            const currentUser = await User.findOne({ where: { elderlyId } });
+            const displayName = currentUser ? (currentUser.name || currentUser.username) : elderlyId;
+
             const adminUsers = await User.findAll({
                 where: {
                     role: { [Op.in]: ['admin', 'staff'] }
@@ -99,7 +102,7 @@ exports.createBooking = async (req, res) => {
             const notifications = adminUsers.map(admin => ({
                 elderlyId: admin.elderlyId,
                 title: '🛎️ มีคำขอเรียกรถใหม่',
-                message: `ผู้ใช้ ${elderlyId} เรียกรถไปยัง ${destination} (เวลา: ${scheduledTime})`
+                message: `ผู้ใช้ ${displayName} เรียกรถไปยัง ${destination} (เวลา: ${scheduledTime === 'now' ? 'ด่วน (ตอนนี้)' : new Date(scheduledTime).toLocaleString('th-TH')})`
             }));
             await Notification.bulkCreate(notifications);
         } catch (e) {

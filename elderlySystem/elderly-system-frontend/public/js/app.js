@@ -52,8 +52,53 @@ function initWizard() {
 initWizard();
 
 const savedUser = localStorage.getItem("currentUser");
-if (savedUser) {
+const savedToken = localStorage.getItem("token");
+
+if (savedUser && savedToken) {
     state.currentUser = JSON.parse(savedUser);
+    
+    // Wait for DOM to be ready, then transition UI
+    document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden');
+        document.getElementById('userNameDisplay').textContent = `ยินดีต้อนรับ, ${state.currentUser.name || state.currentUser.username}`;
+        
+        checkAdminAccess();
+        loadNotifications();
+        showPage('home');
+        
+        // Setup Notification Admin Tab Target Select
+        if (state.currentUser?.role === 'admin' || state.currentUser?.role === 'staff') {
+            apiService.getAllUsers().then(users => {
+                const targetSelect = document.getElementById('notif-target');
+                if (targetSelect) {
+                    targetSelect.innerHTML = `
+                        <option value="all">ส่งถึงทุกคนในระบบ (ทุก Role)</option>
+                        <option value="role:elderly">ส่งเฉพาะลูกบ้าน (Elderly)</option>
+                        <option value="role:staff">ส่งเฉพาะพนักงาน (Staff)</option>
+                        <option value="role:admin">ส่งเฉพาะแอดมิน (Admin)</option>
+                        <optgroup label="ลูกบ้าน (Elderly)">
+                    `;
+                    users.filter(u => u.role === 'elderly').forEach(u => {
+                        const opt = document.createElement('option');
+                        opt.value = u.elderlyId;
+                        opt.textContent = `[${u.elderlyId}] ${u.name || u.username}`;
+                        targetSelect.appendChild(opt);
+                    });
+                    
+                    const groupOthers = document.createElement('optgroup');
+                    groupOthers.label = "พนักงาน / แอดมิน";
+                    users.filter(u => u.role !== 'elderly').forEach(u => {
+                        const opt = document.createElement('option');
+                        opt.value = u.elderlyId;
+                        opt.textContent = `[${u.elderlyId}] ${u.name || u.username} (${u.role})`;
+                        groupOthers.appendChild(opt);
+                    });
+                    targetSelect.appendChild(groupOthers);
+                }
+            }).catch(e => console.error("Auto-login admin setup failed:", e));
+        }
+    });
 }
 
 // --- Auth & Navigation (ASYNC UPDATE!) ---
@@ -371,7 +416,7 @@ async function handleUpdateProfile(event) {
 
 // Admin Tab Logic
 function switchAdminTab(tab) {
-    ['users', 'bookings', 'activities', 'incidents', 'notifications'].forEach(t => {
+    ['users', 'bookings', 'activities', 'incidents', 'notifications', 'announcements'].forEach(t => {
         const contentEl = document.getElementById(`admin-${t}`);
         const tabEl = document.getElementById(`tab-${t}`);
         if (contentEl) contentEl.classList.add('hidden');
@@ -393,6 +438,7 @@ function switchAdminTab(tab) {
     if (tab === 'bookings') loadAdminBookings();
     if (tab === 'activities') loadAdminActivities();
     if (tab === 'incidents') loadAdminIncidents();
+    if (tab === 'announcements') loadAdminAnnouncement();
 }
 
 function checkAdminAccess() {
@@ -438,20 +484,62 @@ async function loadHomeData() {
     // --- 0. ข่าวประกาศ (Announcements) ---
     const announcementArea = document.getElementById('announcement-area');
     if (announcementArea) {
-        announcementArea.innerHTML = `
-            <div class="bg-gradient-to-r from-orange-400 to-red-500 p-4 rounded-2xl text-white shadow-md flex justify-between items-center">
-                <div>
-                    <h4 class="font-bold text-lg"><i class="fas fa-bullhorn mr-2"></i> ประกาศวันนี้</h4>
-                    <p class="text-sm opacity-90">ขอเชิญผู้สูงอายุทุกท่านร่วมกิจกรรมตรวจสุขภาพฟรีที่คลินิก ในวันพรุ่งนี้เวลา 09:00 น.</p>
-                </div>
-                <div class="text-3xl opacity-50"><i class="fas fa-notes-medical"></i></div>
-            </div>
-        `;
+        try {
+            const announcement = await apiService.getAnnouncement();
+            if (announcement && announcement.message && announcement.message.trim() !== "") {
+                announcementArea.innerHTML = `
+                    <div class="bg-gradient-to-r from-orange-400 to-red-500 p-4 rounded-2xl text-white shadow-md flex justify-between items-center mb-6">
+                        <div>
+                            <h4 class="font-bold text-lg"><i class="fas fa-bullhorn mr-2"></i> ประกาศวันนี้</h4>
+                            <p class="text-sm opacity-90 whitespace-pre-line">${announcement.message}</p>
+                        </div>
+                        <div class="text-3xl opacity-50"><i class="fas fa-info-circle"></i></div>
+                    </div>
+                `;
+            } else {
+                announcementArea.innerHTML = "";
+            }
+        } catch (e) {
+            console.error("Failed to load announcement:", e);
+            announcementArea.innerHTML = "";
+        }
     }
 
-    if (items.length > 0) {
+    // --- NEW: Filter Notes for Today's Reminder ---
+    const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+    const todayNotes = items.filter(item => {
+        if (item.type !== 'note') return false;
+        const noteDateStr = new Date(item.timestamp).toLocaleDateString('en-CA');
+        return noteDateStr === todayStr;
+    });
+
+    const reminderContainer = document.getElementById('home-reminders-container');
+    const reminderPreview = document.getElementById('home-reminders-preview');
+    if (reminderContainer && reminderPreview) {
+        if (todayNotes.length > 0) {
+            reminderContainer.classList.remove('hidden');
+            reminderPreview.innerHTML = todayNotes.map(note => `
+                <div class="bg-amber-50 p-4 rounded-xl shadow-sm border-l-4 border-amber-500 flex justify-between items-center card-hover mb-2">
+                    <div class="flex items-center gap-3">
+                        <div class="text-2xl text-amber-500"><i class="fas fa-sticky-note"></i></div>
+                        <div>
+                            <p class="font-bold text-gray-800">${note.title.replace('โน้ต: ', '')}</p>
+                            <p class="text-sm text-gray-500">${note.detail} (${new Date(note.timestamp).toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})} น.)</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            reminderContainer.classList.add('hidden');
+        }
+    }
+
+    // Filter out notes from the main schedule preview so they don't take over the top spot if not intended
+    const scheduleItems = items.filter(item => item.type !== 'note');
+
+    if (scheduleItems.length > 0) {
         // --- 1. แสดงรายการแค่อันล่าสุดใน Preview ---
-        preview.innerHTML = items.slice(0, 1).map(item => {
+        preview.innerHTML = scheduleItems.slice(0, 1).map(item => {
             const icon = item.type === 'vehicle' ? '🚍' : '🤸‍♂️';
             const colorClass = item.type === 'vehicle' ? 'border-sky-500' : 'border-emerald-500';
             return `
@@ -486,7 +574,7 @@ async function loadHomeData() {
             statusCard.className = "bg-emerald-50 p-6 rounded-2xl shadow-sm border-l-8 border-emerald-500";
         }
     } else {
-        preview.innerHTML = '<div class="text-gray-400 text-center py-4 bg-white rounded-xl">ไม่มีข้อมูลนัดหมาย</div>';
+        if (preview) preview.innerHTML = '<div class="text-gray-400 text-center py-4 bg-white rounded-xl">ไม่มีข้อมูลนัดหมาย</div>';
         statusCard.innerHTML = `
             <h3 class="text-xl font-bold text-gray-500">สถานะปัจจุบัน</h3>
             <p class="text-2xl mt-2 text-gray-400">ยังไม่มีรายการจองขณะนี้</p>
@@ -666,11 +754,11 @@ function renderCalendar() {
         if (isSelected) numColor = 'text-white font-bold';
 
         // Event dots (max 3 types shown)
-        const dots = hasEvent ? eventMap[dateKey].slice(0,3).map(ev =>
-            ev.type === 'vehicle'
-                ? `<span class="w-1.5 h-1.5 rounded-full bg-sky-400 inline-block"></span>`
-                : `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>`
-        ).join('') : '';
+        const dots = hasEvent ? eventMap[dateKey].slice(0,3).map(ev => {
+            if (ev.type === 'vehicle') return `<span class="w-1.5 h-1.5 rounded-full bg-sky-400 inline-block"></span>`;
+            if (ev.type === 'note') return `<span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>`;
+            return `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>`;
+        }).join('') : '';
 
         grid.insertAdjacentHTML('beforeend', `
             <div onclick="calSelectDay('${dateKey}')"
@@ -722,8 +810,18 @@ function calSelectDay(dateKey) {
 
     list.innerHTML = dayItems.map(b => {
         const isVeh = b.type === 'vehicle';
-        const colorClass = isVeh ? 'border-sky-500 bg-sky-50' : 'border-emerald-500 bg-emerald-50';
-        const icon = isVeh ? 'fas fa-bus text-sky-600' : 'fas fa-walking text-emerald-600';
+        const isNote = b.type === 'note';
+        let colorClass = 'border-emerald-500 bg-emerald-50';
+        let icon = 'fas fa-walking text-emerald-600';
+        
+        if (isVeh) {
+            colorClass = 'border-sky-500 bg-sky-50';
+            icon = 'fas fa-bus text-sky-600';
+        } else if (isNote) {
+            colorClass = 'border-amber-500 bg-amber-50';
+            icon = 'fas fa-sticky-note text-amber-600';
+        }
+
         let statusBadge = '';
         if (b.status === 'approved' || b.type === 'activity') {
             statusBadge = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">Approve</span>';
@@ -771,6 +869,75 @@ async function handleCancelBooking(bookingId) {
     }
 }
 
+// --- ADD NOTE LOGIC ---
+function openAddNoteModal() {
+    document.getElementById('addNoteModal').classList.remove('hidden');
+    document.getElementById('note-title').value = '';
+    document.getElementById('note-time').value = '';
+    document.getElementById('note-detail').value = '';
+}
+
+function closeAddNoteModal() {
+    document.getElementById('addNoteModal').classList.add('hidden');
+}
+
+async function handleAddNoteSubmit(event) {
+    event.preventDefault();
+    const title = document.getElementById('note-title').value.trim();
+    const time = document.getElementById('note-time').value;
+    const detail = document.getElementById('note-detail').value.trim();
+
+    if (!title || !time) return Swal.fire('แจ้งเตือน', 'กรุณากรอกหัวข้อและเวลา', 'warning');
+
+    try {
+        Swal.showLoading();
+        await apiService.createNote({
+            title: title,
+            scheduledTime: time,
+            detail: detail
+        });
+        
+        Swal.fire({ icon: 'success', title: 'เพิ่มโน้ตเรียบร้อย', timer: 1500, showConfirmButton: false });
+        closeAddNoteModal();
+        
+        // Refresh schedule and home data
+        await loadSchedule();
+        if (document.getElementById('page-home').classList.contains('hidden') === false) {
+            loadHomeData();
+        }
+    } catch (e) {
+        Swal.fire('ผิดพลาด', e.message || 'ไม่สามารถเพิ่มโน้ตได้', 'error');
+    }
+}
+
+// --- ADMIN ANNOUNCEMENT LOGIC ---
+async function loadAdminAnnouncement() {
+    try {
+        const announcement = await apiService.getAnnouncement();
+        document.getElementById('admin-announcement-message').value = announcement && announcement.message ? announcement.message : '';
+    } catch (e) {
+        console.error("Failed to load admin announcement:", e);
+    }
+}
+
+async function handleSaveAnnouncement(event) {
+    event.preventDefault();
+    const message = document.getElementById('admin-announcement-message').value.trim();
+
+    try {
+        Swal.showLoading();
+        await apiService.updateAnnouncement(message);
+        Swal.fire({
+            icon: 'success',
+            title: 'บันทึกสำเร็จ',
+            text: 'อัปเดตประกาศเรียบร้อยแล้ว',
+            timer: 1500,
+            showConfirmButton: false
+        });
+    } catch (e) {
+        Swal.fire('ผิดพลาด', e.message || 'ไม่สามารถบันทึกประกาศได้', 'error');
+    }
+}
 
 // (grabState declared at top of file to avoid TDZ)
 

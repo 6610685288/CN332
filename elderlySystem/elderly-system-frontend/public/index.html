@@ -172,6 +172,11 @@
                         <i class="fas fa-users text-4xl"></i><span class="text-2xl font-bold">กิจกรรม</span>
                     </button>
                 </div>
+                <!-- Reminders Area -->
+                <div id="home-reminders-container" class="mt-6 hidden">
+                    <h3 class="text-xl font-bold text-amber-600 mb-4"><i class="fas fa-bell mr-2"></i>การแจ้งเตือนของฉันวันนี้</h3>
+                    <div id="home-reminders-preview" class="space-y-3"></div>
+                </div>
                 <!-- Mini Schedule -->
                 <div class="mt-6">
                     <div class="flex justify-between items-center mb-4">
@@ -429,6 +434,8 @@
                             class="px-4 py-2 rounded-lg font-bold text-gray-500 text-sm">🆘 เหตุฉุกเฉิน</button>
                         <button onclick="switchAdminTab('notifications')" id="tab-notifications"
                             class="px-4 py-2 rounded-lg font-bold text-gray-500 text-sm">📨 ส่งจดหมาย</button>
+                        <button onclick="switchAdminTab('announcements')" id="tab-announcements"
+                            class="px-4 py-2 rounded-lg font-bold text-gray-500 text-sm">📢 ประกาศ</button>
                     </div>
                 </div>
 
@@ -556,14 +563,34 @@
                         <button type="submit" class="w-full bg-purple-600 text-white p-4 rounded-xl font-bold text-lg shadow-lg hover:bg-purple-700 mt-4 transition-all">ส่งจดหมายทันที</button>
                     </form>
                 </div>
+
+                <!-- Admin Tab: Announcements -->
+                <div id="admin-announcements" class="hidden">
+                    <h3 class="text-2xl font-bold mb-6 text-purple-700"><i class="fas fa-bullhorn mr-2"></i>จัดการประกาศหน้าแรก</h3>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
+                        <p class="text-gray-600 text-sm mb-4">ข้อความประกาศนี้จะไปแสดงบนหน้าแรก (แดชบอร์ดหลัก) ของผู้ใช้งานทุกคน หากไม่ต้องการให้มีประกาศ สามารถลบข้อความออกและกดบันทึกได้</p>
+                        <form onsubmit="handleSaveAnnouncement(event)">
+                            <div>
+                                <label class="block font-bold mb-2">ข้อความประกาศ</label>
+                                <textarea id="admin-announcement-message" class="w-full p-4 border rounded-xl focus:ring-2 focus:ring-purple-500 outline-none" rows="5" placeholder="กรอกข้อความประกาศ..."></textarea>
+                            </div>
+                            <button type="submit" class="w-full bg-purple-600 text-white p-4 rounded-xl font-bold text-lg shadow-lg hover:bg-purple-700 mt-4 transition-all">บันทึกประกาศ</button>
+                        </form>
+                    </div>
+                </div>
             </div>
 
             <!-- 5. Schedule -->
             <div id="page-schedule" class="hidden p-4 md:p-8 max-w-5xl mx-auto pb-24">
-                <div class="flex items-center gap-4 mb-6">
-                    <button onclick="showPage('home')" class="bg-white p-3 rounded-full shadow-sm"><i
-                            class="fas fa-arrow-left"></i></button>
-                    <h2 class="text-3xl font-bold text-gray-800">ตารางของฉัน</h2>
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-4">
+                        <button onclick="showPage('home')" class="bg-white p-3 rounded-full shadow-sm"><i
+                                class="fas fa-arrow-left"></i></button>
+                        <h2 class="text-3xl font-bold text-gray-800">ตารางของฉัน</h2>
+                    </div>
+                    <button onclick="openAddNoteModal()" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl font-bold shadow-md transition-colors flex items-center">
+                        <i class="fas fa-plus mr-2"></i>เพิ่มโน้ต
+                    </button>
                 </div>
 
                 <!-- Calendar Card -->
@@ -612,6 +639,33 @@
                 </button>
             </div>
         </main>
+    </div>
+
+    <!-- Add Note Modal -->
+    <div id="addNoteModal" class="hidden fixed inset-0 z-[60] bg-black/50 flex flex-col justify-center items-center p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 relative">
+            <button onclick="closeAddNoteModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl">
+                <i class="fas fa-times"></i>
+            </button>
+            <h3 class="text-2xl font-bold text-amber-600 mb-4"><i class="fas fa-sticky-note mr-2"></i>เพิ่มโน้ตเตือนความจำ</h3>
+            <form id="addNoteForm" onsubmit="handleAddNoteSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">หัวข้อ (เช่น กินยา, หาหมอ) <span class="text-red-500">*</span></label>
+                    <input type="text" id="note-title" class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-amber-400 outline-none" required>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">วันที่และเวลา <span class="text-red-500">*</span></label>
+                    <input type="datetime-local" id="note-time" class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-amber-400 outline-none" required>
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">รายละเอียดเพิ่มเติม</label>
+                    <textarea id="note-detail" class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-amber-400 outline-none" rows="3"></textarea>
+                </div>
+                <button type="submit" class="w-full bg-amber-500 text-white p-4 rounded-xl font-bold text-lg shadow-lg hover:bg-amber-600 transition-all mt-2">
+                    บันทึกโน้ต
+                </button>
+            </form>
+        </div>
     </div>
 
     <!-- Scripts -->

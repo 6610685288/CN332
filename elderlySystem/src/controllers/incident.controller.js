@@ -14,6 +14,11 @@ exports.createIncident = async (req, res) => {
             type: type || 'sos'
         });
 
+        // Fetch User to get displayName instead of showing raw elderlyId
+        const User = require('../models/user.model');
+        const userRec = await User.findOne({ where: { elderlyId } });
+        const displayName = userRec ? (userRec.name || userRec.username) : elderlyId;
+
         if (type === "fall" || type === "sos") {
             await sendEmail(
                 "oungzazahaha@gmail.com",
@@ -21,7 +26,7 @@ exports.createIncident = async (req, res) => {
                 `${type === 'sos' ? 'ผู้สูงอายุกดปุ่ม SOS!' : 'Fall detected!'}
 
 Sensor ID: ${sensorId || 'SOS_MANUAL'}
-Elderly ID: ${elderlyId}
+Elderly Name/ID: ${displayName}
 Location: ${location || 'ไม่ระบุ'}
 Type: ${type}
 
@@ -42,7 +47,7 @@ Please check immediately.`
                 const notifications = adminUsers.map(admin => ({
                     elderlyId: admin.elderlyId,
                     title: type === 'sos' ? '🆘 ผู้ใช้งานกดปุ่มฉุกเฉิน!' : '🚨 ตรวจพบการล้ม!',
-                    message: `ผู้ใช้ ${elderlyId} ต้องการความช่วยเหลือด่วน\nสถานที่: ${location || 'ไม่ระบุ'}`
+                    message: `ผู้ใช้ ${displayName} ต้องการความช่วยเหลือด่วน\nสถานที่: ${location || 'ไม่ระบุ'}`
                 }));
                 await Notification.bulkCreate(notifications);
             } catch (e) {
